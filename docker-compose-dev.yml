@@ -1,0 +1,40 @@
+# Nơi định nghĩa các "dịch vụ" (containers) của chúng ta
+services:
+  # Đặt tên cho dịch vụ MySQL của chúng ta là 'mysql-db'
+  mysql-db:
+    # Sử dụng image (bản thiết kế) chính thức của MySQL phiên bản 8
+    image: mysql:8.0
+
+    # Đặt tên cho container khi nó chạy để dễ quản lý
+    container_name: fund_mysql_container
+
+    # Khởi động lại container tự động nếu nó bị tắt (ví dụ khi khởi động lại máy)
+    restart: unless-stopped
+
+    # Cấu hình các biến môi trường cho container MySQL
+    # Đây là phần quan trọng nhất để thiết lập database
+    environment:
+      # Đặt mật khẩu cho user 'root'
+      MYSQL_ROOT_PASSWORD: {MYSQL_PASSWORD}
+
+      # Tự động tạo một database khi container khởi động lần đầu
+      # Tên này phải khớp với tên trong file application.properties
+      MYSQL_DATABASE: fund_system_db
+
+    # Ánh xạ cổng (Port Mapping)
+    # - '3306:3306' có nghĩa là:
+    #   Cổng 3306 trên MÁY TÍNH CỦA BẠN (bên trái) sẽ được kết nối tới
+    #   cổng 3306 bên TRONG CONTAINER MySQL (bên phải)
+    ports:
+      - "3306:3306"
+
+    # Lưu trữ dữ liệu (Volumes)
+    # Điều này đảm bảo rằng dữ liệu trong database của bạn sẽ không bị mất
+    # ngay cả khi bạn xóa container đi. Dữ liệu sẽ được lưu vào một thư mục
+    # tên là 'mysql-data' trên máy của bạn.
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+# Định nghĩa volume để lưu trữ dữ liệu lâu dài
+volumes:
+  mysql-data:
