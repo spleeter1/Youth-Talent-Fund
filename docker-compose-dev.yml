@@ -15,18 +15,18 @@ services:
     # Đây là phần quan trọng nhất để thiết lập database
     environment:
       # Đặt mật khẩu cho user 'root'
-      MYSQL_ROOT_PASSWORD: {MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
 
       # Tự động tạo một database khi container khởi động lần đầu
       # Tên này phải khớp với tên trong file application.properties
-      MYSQL_DATABASE: fund_system_db
+      MYSQL_DATABASE: youthtalentfund_db
 
     # Ánh xạ cổng (Port Mapping)
     # - '3306:3306' có nghĩa là:
     #   Cổng 3306 trên MÁY TÍNH CỦA BẠN (bên trái) sẽ được kết nối tới
     #   cổng 3306 bên TRONG CONTAINER MySQL (bên phải)
     ports:
-      - "3306:3306"
+      - "3336:3306"
 
     # Lưu trữ dữ liệu (Volumes)
     # Điều này đảm bảo rằng dữ liệu trong database của bạn sẽ không bị mất
