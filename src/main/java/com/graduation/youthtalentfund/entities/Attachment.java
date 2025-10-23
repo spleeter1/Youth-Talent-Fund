@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.entities;
 
+import com.graduation.youthtalentfund.enums.OwnerType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +28,7 @@ public class Attachment extends BaseEntity {
     @Column(nullable = false)
     private Long ownerId;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 50, nullable = false)
-    private String ownerType;
+    private OwnerType ownerType;
 }

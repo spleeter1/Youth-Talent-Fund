@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.entities;
 
+import com.graduation.youthtalentfund.enums.ProofReportType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,8 +23,9 @@ public class ProofReport extends BaseEntity {
     @Column(nullable = false)
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 50, nullable = false)
-    private String type;
+    private ProofReportType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campaign_id", nullable = false)

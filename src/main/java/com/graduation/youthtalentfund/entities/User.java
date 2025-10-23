@@ -10,10 +10,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_user_email", columnList = "email"),
-        @Index(name = "idx_user_code", columnList = "code")
-})
+@Table(name = "users")
 public class User extends BaseEntity {
 
     @Column(length = 50, nullable = false, unique = true)
