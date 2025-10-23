@@ -26,7 +26,7 @@ services:
     #   Cổng 3306 trên MÁY TÍNH CỦA BẠN (bên trái) sẽ được kết nối tới
     #   cổng 3306 bên TRONG CONTAINER MySQL (bên phải)
     ports:
-      - "3333:3306"
+      - "${DB_PORT}:3306"
 
     # Lưu trữ dữ liệu (Volumes)
     # Điều này đảm bảo rằng dữ liệu trong database của bạn sẽ không bị mất
@@ -35,6 +35,22 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  minio:
+    image: minio/minio:latest
+    container_name: youthtalentfund_minio_container
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    # Lệnh để khởi động server MinIO và chỉ định cổng cho giao diện web
+    command: server /data --console-address ":9001"
+
 # Định nghĩa volume để lưu trữ dữ liệu lâu dài
 volumes:
   mysql-data:
+  minio-data:
