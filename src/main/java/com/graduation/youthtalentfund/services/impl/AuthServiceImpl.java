@@ -55,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
         UserRole newUserRole = new UserRole();
         newUserRole.setUser(user);
         newUserRole.setRole(userRole);
-
+        user.setPhoneNumber(registerDTO.getPhoneNumber());
         user.getUserRoles().add(newUserRole);
 
         userRepository.save(user);
