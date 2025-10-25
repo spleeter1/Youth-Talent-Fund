@@ -4,6 +4,7 @@ import com.graduation.youthtalentfund.constants.MessageConstants;
 import com.graduation.youthtalentfund.dtos.request.LoginDTO;
 import com.graduation.youthtalentfund.dtos.request.RegisterDTO;
 import com.graduation.youthtalentfund.dtos.response.AuthResponseDTO;
+import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
 import com.graduation.youthtalentfund.entities.Role;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.entities.UserRole;
@@ -19,10 +20,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +67,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional(readOnly = true) // Thêm readOnly = true để tối ưu hóa cho việc đọc dữ liệu
     public AuthResponseDTO login(LoginDTO loginDTO) {
         // 1. Tạo đối tượng xác thực với email và mật khẩu thô
         // 2. Giao cho AuthenticationManager xử lý
@@ -76,9 +82,30 @@ public class AuthServiceImpl implements AuthService {
         // 3. Nếu xác thực thành công, lưu thông tin vào SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        // 4. Lấy thông tin User từ database để xây dựng response
+        // Chúng ta lấy email từ đối tượng `authentication` đã được xác thực,
+        // điều này an toàn và đảm bảo tính nhất quán.
+        String userEmail = authentication.getName();
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+
         // 4. Tạo JWT token từ đối tượng Authentication đã được xác thực
         String jwt = jwtTokenProvider.generateToken(authentication);
 
-        return new AuthResponseDTO(jwt);
+        // 5. Xây dựng UserInfoDTO từ User entity
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+        UserInfoDTO userInfoDto = UserInfoDTO.builder()
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .avatarPath(user.getAvatarPath())
+                .roles(roles)
+                .build();
+
+        return AuthResponseDTO.builder()
+                .accessToken(jwt)
+                .userInfo(userInfoDto)
+                .build();
     }
 }
