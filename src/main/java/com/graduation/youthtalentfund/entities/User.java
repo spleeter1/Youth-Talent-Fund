@@ -29,6 +29,9 @@ public class User extends BaseEntity {
     private String phoneNumber;
 
     @Column
+    private String address;
+
+    @Column
     private String avatarPath;
 
     @Lob // Dành cho các trường văn bản dài
