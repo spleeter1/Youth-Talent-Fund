@@ -3,6 +3,7 @@ package com.graduation.youthtalentfund.services.impl;
 import com.graduation.youthtalentfund.constants.MessageConstants;
 import com.graduation.youthtalentfund.dtos.request.LoginDTO;
 import com.graduation.youthtalentfund.dtos.request.RegisterDTO;
+import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.AuthResponseDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
 import com.graduation.youthtalentfund.entities.Role;
