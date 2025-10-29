@@ -73,6 +73,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED); // 41
     }
 
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ErrorDetails> handleFileUploadException(FileUploadException ex,WebRequest request){
+        ErrorDetails errorDetails = new ErrorDetails(new Date(),ex.getMessage(),request.getDescription(false));
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     // === 3. "LƯỚI AN TOÀN CUỐI CÙNG" CHO CÁC LỖI HỆ THỐNG ===
 
     /**

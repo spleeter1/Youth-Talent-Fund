@@ -7,10 +7,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,6 +22,15 @@ public class UserController {
 
         String userEmail = authentication.getName();
         UserInfoDTO updatedUser = userService.updateProfile(profileUpdateDTO, userEmail);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @PutMapping("/me/avatar")
+    public ResponseEntity<UserInfoDTO> updateMyAvatar(
+            @RequestParam("avatar") MultipartFile file,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        UserInfoDTO updatedUser = userService.updateAvatar(userEmail, file);
         return ResponseEntity.ok(updatedUser);
     }
 }
