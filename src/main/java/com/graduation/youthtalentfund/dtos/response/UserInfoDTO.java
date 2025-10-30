@@ -11,7 +11,7 @@ public class UserInfoDTO {
     private String code;
     private String fullName;
     private String email;
-    private String avatarPath;
+    private AvatarPathsDTO avatarPaths;
     private String address;
     private String bio;
     private List<String> roles;

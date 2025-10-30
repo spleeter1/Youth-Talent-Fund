@@ -22,4 +22,7 @@ public final class MessageConstants {
     // --- Thông báo Thành công (Success Messages) ---
     public static final String USER_REGISTERED_SUCCESS = "Đăng ký người dùng thành công!";
 
+    // File
+    public static final String FILE_UPLOAD_ERROR = "Lỗi khi upload file";
+
 }

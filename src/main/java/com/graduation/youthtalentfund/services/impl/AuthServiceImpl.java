@@ -100,7 +100,6 @@ public class AuthServiceImpl implements AuthService {
         UserInfoDTO userInfoDto = UserInfoDTO.builder()
                 .fullName(user.getFullName())
                 .email(user.getEmail())
-                .avatarPath(user.getAvatarPath())
                 .roles(roles)
                 .build();
 
