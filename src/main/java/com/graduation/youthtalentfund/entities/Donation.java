@@ -26,6 +26,9 @@ public class Donation extends BaseEntity {
     @Column
     private String donorEmail;
 
+    @Column
+    private String donorPhoneNumber;
+
     @Lob
     private String message;
 
