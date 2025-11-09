@@ -50,10 +50,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserInfoDTO updateAvatar(String userEmail, MultipartFile file) {
         validateAvatarFile(file);
 
-        User user = userRepository.findByEmail(userEmail)
+        User user = userRepository.findByEmailWithRoles(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
 
         if (StringUtils.hasText(user.getAvatarPath())) {
