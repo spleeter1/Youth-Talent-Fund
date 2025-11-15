@@ -11,7 +11,6 @@ import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -27,8 +26,6 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
-    private final PasswordEncoder passwordEncoder;
-
     @Value("${cdn.base-url}")
     private String cdnBaseUrl;
 
@@ -73,21 +70,6 @@ public class UserServiceImpl implements UserService {
         User updatedUser = userRepository.save(user);
 
         return mapUserToUserInfoDTO(updatedUser);
-    }
-
-    @Override
-    @Transactional
-    public void changePassword(String userEmail, String oldPassword, String newPassword) {
-        User currentUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User","email",userEmail));
-        if(!passwordEncoder.matches(oldPassword,currentUser.getPassword())){
-            throw new BadRequestException("Mật khẩu cũ không chính xác.");
-        }
-        if (passwordEncoder.matches(newPassword, currentUser.getPassword())) {
-            throw new BadRequestException("Mật khẩu mới không được trùng với mật khẩu cũ.");
-        }
-
-        currentUser.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(currentUser);
     }
 
     private void validateAvatarFile(MultipartFile file) {

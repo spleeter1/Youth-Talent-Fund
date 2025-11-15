@@ -1,6 +1,5 @@
 package com.graduation.youthtalentfund.controllers;
 
-import com.graduation.youthtalentfund.dtos.request.ChangePasswordDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
 import com.graduation.youthtalentfund.services.UserService;
@@ -16,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-
     @PutMapping("/me")
     public ResponseEntity<UserInfoDTO> updateMyProfile(
             @Valid @RequestBody UpdateProfileDTO profileUpdateDTO,
