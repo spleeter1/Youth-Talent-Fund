@@ -33,4 +33,13 @@ public class UserController {
         UserInfoDTO updatedUser = userService.updateAvatar(userEmail, file);
         return ResponseEntity.ok(updatedUser);
     }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<String> changeMyPassword(@Valid @RequestBody ChangePasswordDTO changePasswordDTO, Authentication authentication) {
+        String userEmail = authentication.getName();
+        userService.changePassword(userEmail, changePasswordDTO.getOldPassword(), changePasswordDTO.getNewPassword());
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
+
+
 }

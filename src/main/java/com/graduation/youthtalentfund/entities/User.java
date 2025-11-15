@@ -4,6 +4,8 @@ import com.graduation.youthtalentfund.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -60,4 +62,10 @@ public class User extends BaseEntity {
             fetch = FetchType.LAZY // Dùng LAZY để tối ưu, chỉ tải các role khi thực sự cần
     )
     private Set<UserRole> userRoles = new HashSet<>();
+
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Column(name = "reset_password_token_expiry")
+    private LocalDateTime resetPasswordTokenExpiry;
 }
