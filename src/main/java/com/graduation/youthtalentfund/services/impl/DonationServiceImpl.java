@@ -1,7 +1,9 @@
 package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
+import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
+import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.Donation;
 import com.graduation.youthtalentfund.entities.User;
@@ -10,12 +12,18 @@ import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.DonationRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.DonationService;
+import com.graduation.youthtalentfund.services.MailService;
 import com.graduation.youthtalentfund.services.PayOsService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
+import com.graduation.youthtalentfund.utils.mapper.DonationMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
@@ -24,6 +32,7 @@ import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 
 import java.math.BigDecimal;
+import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,12 +45,9 @@ public class DonationServiceImpl implements DonationService {
     private final DonationRepository donationRepository;
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
-    private final JavaMailSender mailSender;
 
     private final PayOsService payOsService;
-
-    @Value("${spring.mail.username}")
-    private String hostMail;
+    private final MailService mailService;
 
     public DonationCreateResponse createDonation(DonationCreateRequest donationCreateRequest) {
         Donation donation = new Donation();
@@ -51,12 +57,15 @@ public class DonationServiceImpl implements DonationService {
         Campaign campaign = campaignOptional.get();
         donation.setCampaign(campaign);
 
-        String userCode = donationCreateRequest.getUserCode();
-        if (userCode != null && !userCode.isBlank()) {
-            Optional<User> userOptional = userRepository.findByCode(donationCreateRequest.getUserCode());
-            if (userOptional.isEmpty()) throw new ResourceNotFoundException("User", "code", donationCreateRequest.getUserCode());
-            User user = userOptional.get();
-            donation.setUser(user);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+            // User logged in
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserPrincipal userPrincipal) {
+                Optional<User> userOptional = userRepository.findByEmail(userPrincipal.getName());
+                userOptional.ifPresent(donation::setUser);
+            }
         }
 
         donation.setCode(CodeGenerator.generateDonationCode());
@@ -83,6 +92,7 @@ public class DonationServiceImpl implements DonationService {
                 .cancelUrl(donationCreateRequest.getCancelUrl())
                 .returnUrl(donationCreateRequest.getReturnUrl())
                 .signature(payOsService.createPaymentRequestSignature(data))
+                .expiredAt(Instant.now().getEpochSecond() + 3600) //1h
                 .build();
 
         CreatePaymentLinkResponse payOsResponse = payOsService.createPaymentLink(payOsRequest);
@@ -97,8 +107,11 @@ public class DonationServiceImpl implements DonationService {
         }
 
         DonationCreateResponse donationCreateResponse = new DonationCreateResponse();
-        donationCreateResponse.setQrCode(payOsResponse.getQrCode());
-        donationCreateResponse.setCheckoutUrl(payOsResponse.getCheckoutUrl());
+        String qrCode = payOsResponse.getQrCode();
+        String checkoutUrl = payOsResponse.getQrCode();
+        donationCreateResponse.setQrCode(qrCode);
+        donationCreateResponse.setCheckoutUrl(checkoutUrl);
+        donationCreateResponse.setSignature(payOsService.createPaymentRequestSignature(Map.of("qrCode", qrCode, "checkoutUrl", checkoutUrl)));
         return donationCreateResponse;
     }
 
@@ -113,6 +126,7 @@ public class DonationServiceImpl implements DonationService {
         }
     }
 
+    @Override
     public void cancelDonation(String transactionCode) {
         Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode);
         if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", transactionCode);
@@ -120,30 +134,57 @@ public class DonationServiceImpl implements DonationService {
 
         donation.setPaymentStatus(PaymentLinkStatus.CANCELLED.getValue());
         payOsService.getPayOS().paymentRequests().cancel(Long.valueOf(transactionCode));
+
+        donationRepository.save(donation);
     }
 
-    public void finishDonation(String transactionCode) {
+    @Override
+    public Page<DonationDataResponse> searchDonation(DonationSearchRequest request) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken)) {
+            // User logged in
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserPrincipal userPrincipal) {
+                Optional<User> userOptional = userRepository.findByEmail(userPrincipal.getName());
+                userOptional.ifPresent(user -> request.setUserEmail(user.getCode()));
+            }
+        } else throw new AccessDeniedException("Must be logged in.");
+
+        Specification<Donation> donationSpecification = DonationSearchRequest.buildSpecification(request);
+        Pageable pageable = Pageable.ofSize(20).withPage(request.getPageNumber());
+        Page<Donation> donationPage = donationRepository.findAll(donationSpecification, pageable);
+        return donationPage.map(DonationMapper::toResponseData);
+    }
+
+    @Override
+    public DonationDataResponse getDonation(String donationCode) {
+        Optional<Donation> donationOptional = donationRepository.findByTransactionCode(donationCode);
+        if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", donationCode);
+        Donation donation = donationOptional.get();
+
+        return DonationMapper.toResponseData(donation);
+    }
+
+    private void finishDonation(String transactionCode) {
         Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode);
         if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", transactionCode);
         Donation donation = donationOptional.get();
 
         donation.setPaymentStatus(PaymentLinkStatus.PAID.getValue());
+
+        donationRepository.save(donation);
     }
 
-    public void sendMail(String email, Long amount, String transactionCode) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(hostMail);
-        message.setTo(email);
-        message.setSubject("Quỹ ủng hộ tài năng trẻ");
-        message.setText("Xác nhận thông tin: \n" +
+    private void sendMail(String email, Long amount, String transactionCode) {
+        String text = "Xác nhận thông tin: \n" +
                 "- Số tiền chuyển: " + amount + "\n" +
-                "- Mã thanh toán: " + transactionCode);
-
-
-        mailSender.send(message);
+                "- Mã thanh toán: " + transactionCode;
+        String subject = "Quỹ ủng hộ tài năng trẻ";
+        mailService.sendMail(email, subject, text);
 
     }
-
 
 
 }
