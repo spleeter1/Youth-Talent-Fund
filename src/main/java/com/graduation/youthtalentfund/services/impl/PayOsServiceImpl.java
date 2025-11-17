@@ -34,5 +34,10 @@ public class PayOsServiceImpl implements PayOsService {
         return payOS.getCrypto().createSignatureOfPaymentRequest(jsonData, config.getChecksumKey());
     }
 
+    @Override
+    public String generateSignature(Object jsonData) {
+        return payOS.getCrypto().createSignature(config.getChecksumKey(), jsonData);
+    }
+
 
 }

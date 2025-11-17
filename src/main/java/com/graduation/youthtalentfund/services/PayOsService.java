@@ -19,5 +19,7 @@ public interface PayOsService {
      */
     String createPaymentRequestSignature(Object jsonData);
 
+    String generateSignature(Object jsonData);
+
     PayOS getPayOS();
 }

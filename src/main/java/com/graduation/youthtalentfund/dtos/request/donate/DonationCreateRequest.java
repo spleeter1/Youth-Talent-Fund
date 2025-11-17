@@ -9,34 +9,32 @@ import org.hibernate.validator.constraints.URL;
 public class DonationCreateRequest {
 
     @NotEmpty(message = "Họ tên không được để trống.")
-    private final String name;
+    private String name;
 
     @NotEmpty(message = "Email không được để trống.")
     @Email(message = "Định dạng email không hợp lệ.")
-    private final String email;
+    private String email;
 
     @NotEmpty(message = "Số điện thoại không được để trống.")
-    private final String phoneNumber;
+    private String phoneNumber;
 
     @NotEmpty(message = "Số tiền không được để trống.")
-    private final Long amount;
+    private Long amount;
 
     @NotEmpty(message = "returnUrl không được để trống.")
     @URL(message = "Url không đúng định dạng")
-    private final String returnUrl;
+    private String returnUrl;
 
     @NotEmpty(message = "cancelUrl không được để trống.")
     @URL(message = "Url không đúng định dạng")
-    private final String cancelUrl;
+    private String cancelUrl;
 
     @NotEmpty(message = "campaignCode không được để trống.")
-    private final String campaignCode;
+    private String campaignCode;
 
     private String message;
 
     private boolean isAnonymous;
     private boolean sendMail;
-
-    private String userCode;
 
 }
