@@ -1,8 +1,17 @@
 package com.graduation.youthtalentfund.repositories.Projection;
 
-public interface CampaignProjection {
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public interface CampaignShortProjection {
     String getCategory();
     String getDurationsDays();
     String getTitle();
-    String get
+    String getDescription();
+    BigDecimal getCurrentAmount();
+    BigDecimal getTargetAmount();
+    LocalDateTime getStartDate();
+    LocalDateTime getEndDate();
+    String getCoverImagePath();
+    String getCode();
 }
