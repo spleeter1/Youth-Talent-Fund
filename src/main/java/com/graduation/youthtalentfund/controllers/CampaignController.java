@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.controllers;
 
+import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import com.graduation.youthtalentfund.services.CampaignService;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +29,10 @@ public class CampaignController {
         Page<CampaignShortProjection> campaignPage = campaignService.searchCampaigns(status, category, keyword, page, size);
 
         return ResponseEntity.ok(campaignPage);
+    }
+
+    @GetMapping("/detail")
+    public ResponseEntity<CampaignDetailProjection> getDetail(@RequestParam("value") String value){
+        return ResponseEntity.ok(campaignService.getByCodeOrSlug(value));
     }
 }

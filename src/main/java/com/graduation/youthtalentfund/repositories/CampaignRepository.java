@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.repositories;
 
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -67,4 +68,35 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    // Get Campaign detail
+    @Query(value = """
+            SELECT
+            	c.code AS code,
+            	c.slug AS slug,
+            	c.title AS title,
+            	c.cover_image_path AS coverImagePath,
+            	c.description AS description,
+            	c.story AS story,
+            	c.location AS location,
+            	c.start_date AS startDate,
+            	c.end_date AS endDate,
+            	c.current_amount AS currentAmount,
+            	c.target_amount AS targetAmount,
+            	c.status AS status,
+            	DATEDIFF(c.end_date, c.start_date) AS durationDays,
+            	s.id AS staffId,
+            	s.code AS staffCode,
+            	s.full_name AS staffName,
+            	s.email AS staffEmail
+            FROM
+            	campaigns c
+            LEFT JOIN users s ON
+            	c.staff_id = s.id
+            WHERE
+            	c.code = :value
+            	OR c.slug = :value
+        """,
+            nativeQuery = true)
+    Optional<CampaignDetailProjection> findByCodeOrSlug(@Param("value") String value);
 }
