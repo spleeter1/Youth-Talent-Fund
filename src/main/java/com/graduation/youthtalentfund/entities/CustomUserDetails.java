@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.entities;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -36,7 +37,7 @@ public class CustomUserDetails implements UserDetails {
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
                 .filter(Objects::nonNull)
-                .map(r -> (GrantedAuthority) r::getName) // chuyển tên role thành GrantedAuthority
+                .map(r ->  new SimpleGrantedAuthority("ROLE_" + r.getName()))
                 .toList();
     }
 
