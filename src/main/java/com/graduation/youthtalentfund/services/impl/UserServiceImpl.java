@@ -1,14 +1,21 @@
 package com.graduation.youthtalentfund.services.impl;
 
+import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.AvatarPathsDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
+import com.graduation.youthtalentfund.entities.Role;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.entities.UserRole;
+import com.graduation.youthtalentfund.enums.UserStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
+import com.graduation.youthtalentfund.exceptions.DataConflictException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
+import com.graduation.youthtalentfund.repositories.RoleRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.UserService;
+import com.graduation.youthtalentfund.utils.CodeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
 
     @Value("${cdn.base-url}")
     private String cdnBaseUrl;
@@ -78,8 +86,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(String userEmail, String oldPassword, String newPassword) {
-        User currentUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User","email",userEmail));
-        if(!passwordEncoder.matches(oldPassword,currentUser.getPassword())){
+        User currentUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+        if (!passwordEncoder.matches(oldPassword, currentUser.getPassword())) {
             throw new BadRequestException("Mật khẩu cũ không chính xác.");
         }
         if (passwordEncoder.matches(newPassword, currentUser.getPassword())) {
@@ -88,6 +96,32 @@ public class UserServiceImpl implements UserService {
 
         currentUser.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(currentUser);
+    }
+
+    @Override
+    @Transactional
+    public UserInfoDTO createStaff(CreateStaffRequest request, User admin) {
+        if (userRepository.existsByEmail(request.getEmail())) throw new DataConflictException(("User đã tồn tại"));
+
+        Role staffRole = roleRepository.findByName("STAFF").orElseThrow(() -> new ResourceNotFoundException("Khong ton tai role nay"));
+
+        User staff = new User();
+        staff.setFullName(request.getFullName());
+        staff.setEmail(request.getEmail());
+        staff.setAddress(request.getAddress());
+        staff.setPhoneNumber(request.getPhoneNumber());
+        staff.setPassword(passwordEncoder.encode(request.getPassword()));
+        staff.setStatus(UserStatus.ACTIVE);
+        staff.setCode(CodeGenerator.generateUserCode());
+
+        UserRole userRole = new UserRole();
+        userRole.setUser(staff);
+        userRole.setRole(staffRole);
+        userRole.setAssignedBy(admin);
+        staff.getUserRoles().add(userRole);
+
+        userRepository.save(staff);
+        return mapUserToUserInfoDTO(staff);
     }
 
     private void validateAvatarFile(MultipartFile file) {
