@@ -55,8 +55,8 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(UserStatus.ACTIVE);
         user.setCode(CodeGenerator.generateUserCode());
 
-        Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new ResourceNotFoundException(String.format(MessageConstants.ROLE_NOT_FOUND_SYSTEM, "ROLE_USER")
+        Role userRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new ResourceNotFoundException(String.format(MessageConstants.ROLE_NOT_FOUND_SYSTEM, "USER")
                 ));
 
         UserRole newUserRole = new UserRole();
