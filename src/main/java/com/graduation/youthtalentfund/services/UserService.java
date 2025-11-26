@@ -4,6 +4,9 @@ import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.repositories.Projection.StaffProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
@@ -13,4 +16,5 @@ public interface UserService {
 
     //Admin
     UserInfoDTO createStaff(CreateStaffRequest request, User admin);
+    Page<StaffProjection> getStaffs(String keyword, Pageable pageable);
 }

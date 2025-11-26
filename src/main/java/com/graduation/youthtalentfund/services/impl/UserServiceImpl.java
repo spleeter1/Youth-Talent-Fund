@@ -11,6 +11,7 @@ import com.graduation.youthtalentfund.enums.UserStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
 import com.graduation.youthtalentfund.exceptions.DataConflictException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
+import com.graduation.youthtalentfund.repositories.Projection.StaffProjection;
 import com.graduation.youthtalentfund.repositories.RoleRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.FileStorageService;
@@ -18,16 +19,15 @@ import com.graduation.youthtalentfund.services.UserService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -98,6 +98,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(currentUser);
     }
 
+    //Admin
     @Override
     @Transactional
     public UserInfoDTO createStaff(CreateStaffRequest request, User admin) {
@@ -122,6 +123,11 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(staff);
         return mapUserToUserInfoDTO(staff);
+    }
+
+    @Override
+    public Page<StaffProjection> getStaffs(String keyword, Pageable pageable) {
+       return userRepository.searchStaff(keyword, pageable);
     }
 
     private void validateAvatarFile(MultipartFile file) {
@@ -156,6 +162,7 @@ public class UserServiceImpl implements UserService {
                 .avatarPaths(avatarPaths)
                 .address(user.getAddress())
                 .bio(user.getBio())
+                .status(String.valueOf(user.getStatus()))
                 .roles(roles)
                 .build();
     }
