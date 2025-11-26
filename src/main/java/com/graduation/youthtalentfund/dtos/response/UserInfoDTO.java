@@ -15,4 +15,5 @@ public class UserInfoDTO {
     private String address;
     private String bio;
     private List<String> roles;
+    private String status;
 }
