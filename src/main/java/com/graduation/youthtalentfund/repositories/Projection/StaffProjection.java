@@ -14,5 +14,6 @@ public interface StaffProjection {
     LocalDateTime getCreatedAt();
     Long getTotalInProgress();
     Long getTotalCompleted();
+    Long getTotalDonations();
 }
 
