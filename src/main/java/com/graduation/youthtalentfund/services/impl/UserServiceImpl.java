@@ -18,9 +18,11 @@ import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.UserService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
@@ -49,14 +52,31 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserInfoDTO updateProfile(UpdateProfileDTO updateProfileDTO, String userEmail) {
-        User curUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+        User targetUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
 
-        if (StringUtils.hasText(updateProfileDTO.getFullName())) curUser.setFullName(updateProfileDTO.getFullName());
-        if (updateProfileDTO.getAddress() != null) curUser.setAddress(updateProfileDTO.getAddress());
-        if (updateProfileDTO.getPhoneNumber() != null) curUser.setPhoneNumber(updateProfileDTO.getPhoneNumber());
-        if (updateProfileDTO.getBio() != null) curUser.setBio(updateProfileDTO.getBio());
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User actingUser = userRepository.findByEmail(actingEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", actingEmail));
 
-        User updatedUser = userRepository.save(curUser);
+        boolean targetIsAdmin = targetUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        boolean actingIsAdmin = actingUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        if (actingIsAdmin && targetIsAdmin && !actingUser.getId().equals(targetUser.getId())) {
+            throw new IllegalStateException("Admin không được sửa admin khác");
+        }
+
+        if (StringUtils.hasText(updateProfileDTO.getFullName())) targetUser.setFullName(updateProfileDTO.getFullName());
+        if (updateProfileDTO.getAddress() != null) targetUser.setAddress(updateProfileDTO.getAddress());
+        if (updateProfileDTO.getPhoneNumber() != null) targetUser.setPhoneNumber(updateProfileDTO.getPhoneNumber());
+        if (updateProfileDTO.getBio() != null) targetUser.setBio(updateProfileDTO.getBio());
+
+        User updatedUser = userRepository.save(targetUser);
         return mapUserToUserInfoDTO(updatedUser);
     }
 
@@ -127,8 +147,63 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Page<StaffProjection> getStaffs(String keyword, Pageable pageable) {
-       return userRepository.searchStaff(keyword, pageable);
+        return userRepository.searchStaff(keyword, pageable);
     }
+
+    @Override
+    public UserInfoDTO getUserInfo(String emailOrCode) {
+        User user = userRepository.findByEmailOrCode(emailOrCode, emailOrCode).orElseThrow(() -> new ResourceNotFoundException("User khong ton tai"));
+        return mapUserToUserInfoDTO(user);
+    }
+
+    @Override
+    @Transactional
+    public void lockUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        targetUser.setStatus(UserStatus.LOCK);
+        userRepository.save(targetUser);
+
+        log.info("\n\n\n\nUser [{}] LOCKED user [{}]\n\n\n\n", actingEmail, targetEmail);
+    }
+
+    @Override
+    @Transactional
+    public void unlockUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        targetUser.setStatus(UserStatus.ACTIVE);
+        userRepository.save(targetUser);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        boolean targetIsAdmin = targetUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        if (targetIsAdmin) {
+            throw new IllegalStateException("Admin không được xóa admin khác");
+        }
+
+        targetUser.setStatus(UserStatus.DELETE);
+        targetUser.setEmail("user-" + targetUser.getCode() + "@youthtalentfund.com");
+        targetUser.setFullName("Deleted User");
+        targetUser.setPassword("youngthTalentPassword");
+        targetUser.setPhoneNumber(null);
+        targetUser.setAddress(null);
+        targetUser.setBio(null);
+
+        userRepository.save(targetUser);
+    }
+
 
     private void validateAvatarFile(MultipartFile file) {
         if (file.isEmpty()) throw new BadRequestException("Vui lòng chọn một file để tải lên.");
@@ -164,6 +239,7 @@ public class UserServiceImpl implements UserService {
                 .bio(user.getBio())
                 .status(String.valueOf(user.getStatus()))
                 .roles(roles)
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }

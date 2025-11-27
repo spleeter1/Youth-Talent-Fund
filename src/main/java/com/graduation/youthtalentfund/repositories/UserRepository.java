@@ -17,6 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByCode(String code);
     Boolean existsByEmail(String email);
+    Optional<User> findByEmailOrCode(String email, String code);
 
     @Query("SELECT u FROM User u JOIN FETCH u.userRoles ur JOIN FETCH ur.role WHERE u.email = :email")
     Optional<User> findByEmailWithRoles(@Param("email") String email);
@@ -35,7 +36,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
             	u.status,
             	u.created_at AS createdAt,
             	COALESCE(SUM(CASE WHEN c.status = 'IN_PROGRESS' THEN 1 ELSE 0 END), 0) AS totalInProgress,
-            	COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS totalCompleted
+            	COALESCE(SUM(CASE WHEN c.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS totalCompleted,
+            	COALESCE(COUNT(d.id), 0) AS totalDonations
             FROM
             	users u
             JOIN user_roles ur ON
@@ -44,8 +46,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
             	ur.role_id = r.id
             LEFT JOIN campaigns c ON
             	u.id = c.staff_id
+            LEFT JOIN donations d ON
+                c.id = d.campaign_id
             WHERE
             	r.name = 'STAFF'
+            	AND (u.status <> 'DELETE')
             	AND (:keyword IS NULL
             		OR u.full_name LIKE CONCAT('%', :keyword, '%')
             		OR u.email LIKE CONCAT('%', :keyword, '%')

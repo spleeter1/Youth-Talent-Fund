@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.entities;
 
+import com.graduation.youthtalentfund.enums.UserStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -37,7 +38,7 @@ public class CustomUserDetails implements UserDetails {
         return user.getUserRoles().stream()
                 .map(UserRole::getRole)
                 .filter(Objects::nonNull)
-                .map(r ->  new SimpleGrantedAuthority("ROLE_" + r.getName()))
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getName()))
                 .toList();
     }
 
@@ -58,7 +59,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return user.getStatus() != UserStatus.LOCK && user.getStatus() != UserStatus.DELETE;
     }
 
     @Override
@@ -68,6 +69,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return user.getStatus() == UserStatus.ACTIVE;
     }
 }
