@@ -46,10 +46,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
             	ur.role_id = r.id
             LEFT JOIN campaigns c ON
             	u.id = c.staff_id
-            LEFT JOIN donations d ON 
+            LEFT JOIN donations d ON
                 c.id = d.campaign_id
             WHERE
             	r.name = 'STAFF'
+            	AND (u.status <> 'DELETE')
             	AND (:keyword IS NULL
             		OR u.full_name LIKE CONCAT('%', :keyword, '%')
             		OR u.email LIKE CONCAT('%', :keyword, '%')

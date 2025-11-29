@@ -1,11 +1,11 @@
 package com.graduation.youthtalentfund.controllers;
 
+import com.graduation.youthtalentfund.dtos.request.AdminChangePasswordRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
-import com.graduation.youthtalentfund.repositories.Projection.StaffDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.StaffProjection;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.UserService;
@@ -34,7 +34,7 @@ public class AdminController {
     }
 
     @GetMapping("/staffs")
-    public ResponseEntity<Page<StaffProjection>> getOrSearchStaffs(@RequestParam String keyword, @PageableDefault Pageable pageable) {
+    public ResponseEntity<Page<StaffProjection>> getOrSearchStaffs(@RequestParam(required = false) String keyword, @PageableDefault Pageable pageable) {
         Page<StaffProjection> page = userService.getStaffs(keyword, pageable);
         return ResponseEntity.ok(page);
     }
@@ -65,4 +65,7 @@ public class AdminController {
     public void deleteUser(@PathVariable String email) {
         userService.deleteUser(email);
     }
+
+    @PutMapping("/staff/password")
+    public void adminChangePassword(AdminChangePasswordRequest request){};
 }
