@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.services.impl;
 
+import com.graduation.youthtalentfund.dtos.request.AdminChangePasswordRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.AvatarPathsDTO;
@@ -22,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,10 @@ public class UserServiceImpl implements UserService {
     private final FileStorageService fileStorageService;
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String mailFrom;
 
     @Value("${cdn.base-url}")
     private String cdnBaseUrl;
@@ -194,7 +201,6 @@ public class UserServiceImpl implements UserService {
         }
 
         targetUser.setStatus(UserStatus.DELETE);
-        targetUser.setEmail("user-" + targetUser.getCode() + "@youthtalentfund.com");
         targetUser.setFullName("Deleted User");
         targetUser.setPassword("youngthTalentPassword");
         targetUser.setPhoneNumber(null);
@@ -202,8 +208,35 @@ public class UserServiceImpl implements UserService {
         targetUser.setBio(null);
 
         userRepository.save(targetUser);
+
+        String subject = "Admin đã xoá tài khoản của bạn";
+        String content = "Admin đã xoá tài khoản của bạn, vui lòng liên hệ Admin tổ chức";
+        sendToStaffEmail(targetUser.getEmail(),subject,content);
     }
 
+    @Override
+    @Transactional
+    public void changeStaffPassword(String targetEmail, AdminChangePasswordRequest request){
+        User targetUser = userRepository.findByEmail(targetEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User actingUser = userRepository.findByEmail(actingEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", actingEmail));
+
+        boolean actingHasOtherRoles = actingUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> !"ADMIN".equals(ur.getRole().getName()));
+
+        if (actingHasOtherRoles) {
+            throw new IllegalStateException("Admin không được xóa admin khác");
+        }
+
+        targetUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(targetUser);
+
+        String subject = "Admin đã đổi mật khẩu của bạn";
+        String content = "Mật khẩu của bạn đã được Admin đặt lại, vui lòng liên hệ Admin tổ chức";
+        sendToStaffEmail(targetUser.getEmail(),subject,content);
+    }
 
     private void validateAvatarFile(MultipartFile file) {
         if (file.isEmpty()) throw new BadRequestException("Vui lòng chọn một file để tải lên.");
@@ -241,5 +274,15 @@ public class UserServiceImpl implements UserService {
                 .roles(roles)
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private void sendToStaffEmail(String toEmail, String subject, String textContent) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailFrom);
+        message.setTo(toEmail);
+        message.setSubject(subject);
+        message.setText(textContent);
+
+        mailSender.send(message);
     }
 }

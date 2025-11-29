@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.services;
 
+import com.graduation.youthtalentfund.dtos.request.AdminChangePasswordRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
@@ -23,5 +24,6 @@ public interface UserService {
     void lockUser(String targetEmail);
     void unlockUser(String targetEmail);
     void deleteUser(String targetEmail);
+    void changeStaffPassword(String targetEmail, AdminChangePasswordRequest request);
 
 }
