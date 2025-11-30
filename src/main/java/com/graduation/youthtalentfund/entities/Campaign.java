@@ -3,8 +3,7 @@ package com.graduation.youthtalentfund.entities;
 import com.graduation.youthtalentfund.enums.CampaignCategory;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +13,9 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "campaigns", indexes = {
         @Index(name = "idx_campaign_code", columnList = "code", unique = true),
         @Index(name = "idx_campaign_slug", columnList = "slug", unique = true)
