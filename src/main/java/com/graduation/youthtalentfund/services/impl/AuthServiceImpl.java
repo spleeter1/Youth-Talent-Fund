@@ -6,6 +6,7 @@ import com.graduation.youthtalentfund.dtos.request.RegisterDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.AuthResponseDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
+import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.Role;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.entities.UserRole;
@@ -54,8 +55,8 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(UserStatus.ACTIVE);
         user.setCode(CodeGenerator.generateUserCode());
 
-        Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new ResourceNotFoundException(   String.format(MessageConstants.ROLE_NOT_FOUND_SYSTEM, "ROLE_USER")
+        Role userRole = roleRepository.findByName("USER")
+                .orElseThrow(() -> new ResourceNotFoundException(String.format(MessageConstants.ROLE_NOT_FOUND_SYSTEM, "USER")
                 ));
 
         UserRole newUserRole = new UserRole();
@@ -83,12 +84,8 @@ public class AuthServiceImpl implements AuthService {
         // 3. Nếu xác thực thành công, lưu thông tin vào SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // 4. Lấy thông tin User từ database để xây dựng response
-        // Chúng ta lấy email từ đối tượng `authentication` đã được xác thực,
-        // điều này an toàn và đảm bảo tính nhất quán.
-        String userEmail = authentication.getName();
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+        //
+        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
 
         // 4. Tạo JWT token từ đối tượng Authentication đã được xác thực
         String jwt = jwtTokenProvider.generateToken(authentication);
@@ -98,8 +95,8 @@ public class AuthServiceImpl implements AuthService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
         UserInfoDTO userInfoDto = UserInfoDTO.builder()
-                .fullName(user.getFullName())
-                .email(user.getEmail())
+                .fullName(userPrincipal.getFullName())
+                .email(userPrincipal.getEmail())
                 .roles(roles)
                 .build();
 

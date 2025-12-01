@@ -1,33 +1,51 @@
 package com.graduation.youthtalentfund.services.impl;
 
+import com.graduation.youthtalentfund.dtos.request.AdminChangePasswordRequest;
+import com.graduation.youthtalentfund.dtos.request.CreateStaffRequest;
 import com.graduation.youthtalentfund.dtos.request.UpdateProfileDTO;
 import com.graduation.youthtalentfund.dtos.response.AvatarPathsDTO;
 import com.graduation.youthtalentfund.dtos.response.UserInfoDTO;
+import com.graduation.youthtalentfund.entities.Role;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.entities.UserRole;
+import com.graduation.youthtalentfund.enums.UserStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
+import com.graduation.youthtalentfund.exceptions.DataConflictException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
+import com.graduation.youthtalentfund.repositories.Projection.StaffProjection;
+import com.graduation.youthtalentfund.repositories.RoleRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.UserService;
+import com.graduation.youthtalentfund.utils.CodeGenerator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String mailFrom;
 
     @Value("${cdn.base-url}")
     private String cdnBaseUrl;
@@ -41,14 +59,31 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserInfoDTO updateProfile(UpdateProfileDTO updateProfileDTO, String userEmail) {
-        User curUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+        User targetUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
 
-        if (StringUtils.hasText(updateProfileDTO.getFullName())) curUser.setFullName(updateProfileDTO.getFullName());
-        if (updateProfileDTO.getAddress() != null) curUser.setAddress(updateProfileDTO.getAddress());
-        if (updateProfileDTO.getPhoneNumber() != null) curUser.setPhoneNumber(updateProfileDTO.getPhoneNumber());
-        if (updateProfileDTO.getBio() != null) curUser.setBio(updateProfileDTO.getBio());
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User actingUser = userRepository.findByEmail(actingEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", actingEmail));
 
-        User updatedUser = userRepository.save(curUser);
+        boolean targetIsAdmin = targetUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        boolean actingIsAdmin = actingUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        if (actingIsAdmin && targetIsAdmin && !actingUser.getId().equals(targetUser.getId())) {
+            throw new IllegalStateException("Admin không được sửa admin khác");
+        }
+
+        if (StringUtils.hasText(updateProfileDTO.getFullName())) targetUser.setFullName(updateProfileDTO.getFullName());
+        if (updateProfileDTO.getAddress() != null) targetUser.setAddress(updateProfileDTO.getAddress());
+        if (updateProfileDTO.getPhoneNumber() != null) targetUser.setPhoneNumber(updateProfileDTO.getPhoneNumber());
+        if (updateProfileDTO.getBio() != null) targetUser.setBio(updateProfileDTO.getBio());
+
+        User updatedUser = userRepository.save(targetUser);
         return mapUserToUserInfoDTO(updatedUser);
     }
 
@@ -78,8 +113,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(String userEmail, String oldPassword, String newPassword) {
-        User currentUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User","email",userEmail));
-        if(!passwordEncoder.matches(oldPassword,currentUser.getPassword())){
+        User currentUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", userEmail));
+        if (!passwordEncoder.matches(oldPassword, currentUser.getPassword())) {
             throw new BadRequestException("Mật khẩu cũ không chính xác.");
         }
         if (passwordEncoder.matches(newPassword, currentUser.getPassword())) {
@@ -88,6 +123,120 @@ public class UserServiceImpl implements UserService {
 
         currentUser.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(currentUser);
+    }
+
+    //Admin
+    @Override
+    @Transactional
+    public UserInfoDTO createStaff(CreateStaffRequest request, User admin) {
+        if (userRepository.existsByEmail(request.getEmail())) throw new DataConflictException(("User đã tồn tại"));
+
+        Role staffRole = roleRepository.findByName("STAFF").orElseThrow(() -> new ResourceNotFoundException("Khong ton tai role nay"));
+
+        User staff = new User();
+        staff.setFullName(request.getFullName());
+        staff.setEmail(request.getEmail());
+        staff.setAddress(request.getAddress());
+        staff.setPhoneNumber(request.getPhoneNumber());
+        staff.setPassword(passwordEncoder.encode(request.getPassword()));
+        staff.setStatus(UserStatus.ACTIVE);
+        staff.setCode(CodeGenerator.generateUserCode());
+
+        UserRole userRole = new UserRole();
+        userRole.setUser(staff);
+        userRole.setRole(staffRole);
+        userRole.setAssignedBy(admin);
+        staff.getUserRoles().add(userRole);
+
+        userRepository.save(staff);
+        return mapUserToUserInfoDTO(staff);
+    }
+
+    @Override
+    public Page<StaffProjection> getStaffs(String keyword, Pageable pageable) {
+        return userRepository.searchStaff(keyword, pageable);
+    }
+
+    @Override
+    public UserInfoDTO getUserInfo(String emailOrCode) {
+        User user = userRepository.findByEmailOrCode(emailOrCode, emailOrCode).orElseThrow(() -> new ResourceNotFoundException("User khong ton tai"));
+        return mapUserToUserInfoDTO(user);
+    }
+
+    @Override
+    @Transactional
+    public void lockUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        targetUser.setStatus(UserStatus.LOCK);
+        userRepository.save(targetUser);
+
+        log.info("\n\n\n\nUser [{}] LOCKED user [{}]\n\n\n\n", actingEmail, targetEmail);
+    }
+
+    @Override
+    @Transactional
+    public void unlockUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        targetUser.setStatus(UserStatus.ACTIVE);
+        userRepository.save(targetUser);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(String targetEmail) {
+        User targetUser = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        boolean targetIsAdmin = targetUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> "ADMIN".equals(ur.getRole().getName()));
+
+        if (targetIsAdmin) {
+            throw new IllegalStateException("Admin không được xóa admin khác");
+        }
+
+        targetUser.getUserRoles().clear();
+        targetUser.setStatus(UserStatus.DELETE);
+        targetUser.setFullName("Deleted User");
+        targetUser.setPassword("youngthTalentPassword");
+        targetUser.setPhoneNumber(null);
+        targetUser.setAddress(null);
+        targetUser.setBio(null);
+
+        userRepository.save(targetUser);
+
+        String subject = "Admin đã xoá tài khoản của bạn";
+        String content = "Admin đã xoá tài khoản của bạn, vui lòng liên hệ Admin tổ chức";
+        sendToStaffEmail(targetUser.getEmail(), subject, content);
+    }
+
+    @Override
+    @Transactional
+    public void changeStaffPassword(String targetEmail, AdminChangePasswordRequest request) {
+        User targetUser = userRepository.findByEmail(targetEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
+
+        String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        User actingUser = userRepository.findByEmail(actingEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", actingEmail));
+
+        boolean actingHasOtherRoles = actingUser.getUserRoles()
+                .stream()
+                .anyMatch(ur -> !"ADMIN".equals(ur.getRole().getName()));
+
+        if (actingHasOtherRoles) {
+            throw new IllegalStateException("Admin không được xóa admin khác");
+        }
+
+        targetUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(targetUser);
+
+        String subject = "Admin đã đổi mật khẩu của bạn";
+        String content = "Mật khẩu của bạn đã được Admin đặt lại, vui lòng liên hệ Admin tổ chức";
+        sendToStaffEmail(targetUser.getEmail(), subject, content);
     }
 
     private void validateAvatarFile(MultipartFile file) {
@@ -122,7 +271,23 @@ public class UserServiceImpl implements UserService {
                 .avatarPaths(avatarPaths)
                 .address(user.getAddress())
                 .bio(user.getBio())
+                .status(String.valueOf(user.getStatus()))
                 .roles(roles)
+                .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private void sendToStaffEmail(String toEmail, String subject, String textContent) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(textContent);
+
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.out.println("[WARN] Gửi email thất bại: " + e.getMessage());
+        }
     }
 }

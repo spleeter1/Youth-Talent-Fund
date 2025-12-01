@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.config;
 
 import com.graduation.youthtalentfund.repositories.UserRepository;
+import com.graduation.youthtalentfund.services.impl.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,19 +21,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApplicationConfig {
 
-    private final UserRepository userRepository;
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByEmailWithRoles(username)
-                .map(user -> new org.springframework.security.core.userdetails.User(
-                        user.getEmail(),
-                        user.getPassword(),
-                        user.getUserRoles().stream()
-                                .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getName()))
-                                .collect(Collectors.toList())
-                ))
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
+        return customUserDetailsService; // <- đây mới dùng CustomUserDetailsService
     }
 
     @Bean

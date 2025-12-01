@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép truy cập công khai vào các endpoint xác thực và các trang public
                         .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Tất cả các request khác đều yêu cầu phải được xác thực
                         .anyRequest().authenticated()
                 )

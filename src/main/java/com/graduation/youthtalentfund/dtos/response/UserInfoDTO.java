@@ -2,7 +2,7 @@ package com.graduation.youthtalentfund.dtos.response;
 
 import lombok.Builder;
 import lombok.Data;
-
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -15,4 +15,6 @@ public class UserInfoDTO {
     private String address;
     private String bio;
     private List<String> roles;
+    private String status;
+    private LocalDateTime createdAt;
 }

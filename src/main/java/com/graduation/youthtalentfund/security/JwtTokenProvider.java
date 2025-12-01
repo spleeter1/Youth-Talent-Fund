@@ -1,6 +1,7 @@
 // File: src/main/java/com/graduation/youthtalentfund/security/JwtTokenProvider.java
 package com.graduation.youthtalentfund.security;
 
+import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -9,11 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
@@ -30,12 +33,19 @@ public class JwtTokenProvider {
      * Tạo JWT từ đối tượng Authentication của Spring Security.
      */
     public String generateToken(Authentication authentication) {
-        UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
+        CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
+        List<String> roles = userPrincipal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(auth -> auth.startsWith("ROLE_") ? auth.substring(5) : auth)
+                .toList();
+
         return Jwts.builder()
-                .subject(userPrincipal.getUsername()) // Sử dụng email/username làm subject
+                .subject(userPrincipal.getUsername())
+                .claim("code", userPrincipal.getCode())
+                .claim("roles", roles)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey()) // Ký với secret key
@@ -43,16 +53,35 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Lấy username (email) từ chuỗi JWT.
+     * Parse và lấy value
      */
-    public String getUsernameFromJWT(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey()) // Xác thực token bằng secret key
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
+    }
 
+    public String getUsernameFromJWT(String token) {
+        Claims claims = parseClaims(token);
         return claims.getSubject();
+    }
+
+    public String getCodeFromJWT(String token) {
+        Claims claims = parseClaims(token);
+        return claims.get("code", String.class);
+    }
+
+    public List<String> extractRoles(String token) {
+        Claims claims = parseClaims(token);
+        Object rolesObj = claims.get("roles");
+        if (rolesObj == null) return null;
+        @SuppressWarnings("unchecked")
+        List<Object> raw = (List<Object>) rolesObj;
+        return raw.stream()
+                .map(Object::toString)
+                .collect(Collectors.toList());
     }
 
     /**
