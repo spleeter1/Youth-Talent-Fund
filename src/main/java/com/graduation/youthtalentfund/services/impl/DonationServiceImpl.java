@@ -5,6 +5,7 @@ import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.Donation;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
@@ -14,6 +15,7 @@ import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.DonationService;
 import com.graduation.youthtalentfund.services.MailService;
 import com.graduation.youthtalentfund.services.PayOsService;
+import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.mapper.DonationMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +23,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
@@ -32,7 +31,6 @@ import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 
 import java.math.BigDecimal;
-import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,16 +55,9 @@ public class DonationServiceImpl implements DonationService {
         Campaign campaign = campaignOptional.get();
         donation.setCampaign(campaign);
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)) {
-            // User logged in
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserPrincipal userPrincipal) {
-                Optional<User> userOptional = userRepository.findByEmail(userPrincipal.getName());
-                userOptional.ifPresent(donation::setUser);
-            }
-        }
+        CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
+        Optional<User> userOptional = userRepository.findByCode(customUserDetails.getCode());
+        userOptional.ifPresent(donation::setUser);
 
         donation.setCode(CodeGenerator.generateDonationCode());
         donation.setAmount(BigDecimal.valueOf(donationCreateRequest.getAmount()));
@@ -141,16 +132,11 @@ public class DonationServiceImpl implements DonationService {
     @Override
     public Page<DonationDataResponse> searchDonation(DonationSearchRequest request) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated()
-                && !(authentication instanceof AnonymousAuthenticationToken)) {
-            // User logged in
-            Object principal = authentication.getPrincipal();
-            if (principal instanceof UserPrincipal userPrincipal) {
-                Optional<User> userOptional = userRepository.findByEmail(userPrincipal.getName());
-                userOptional.ifPresent(user -> request.setUserEmail(user.getCode()));
-            }
-        } else throw new AccessDeniedException("Must be logged in.");
+        CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
+        if (!AuthUtil.isAdmin(customUserDetails)) {
+            //Nếu không phải admin thì request mặc định dùng userCode. Ngược lại, admin có thể dùng bất kì userCode nào để lọc theo user
+            request.setUserCode(customUserDetails.getCode());
+        }
 
         Specification<Donation> donationSpecification = DonationSearchRequest.buildSpecification(request);
         Pageable pageable = Pageable.ofSize(20).withPage(request.getPageNumber());
@@ -163,6 +149,12 @@ public class DonationServiceImpl implements DonationService {
         Optional<Donation> donationOptional = donationRepository.findByTransactionCode(donationCode);
         if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", donationCode);
         Donation donation = donationOptional.get();
+
+        CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
+        // Chỉ admin và chủ của donation đó được xem data
+        if (!donation.getUser().getCode().equals(customUserDetails.getCode()) && !AuthUtil.isAdmin(customUserDetails)) {
+            throw new AccessDeniedException("Access denied");
+        }
 
         return DonationMapper.toResponseData(donation);
     }
@@ -185,6 +177,5 @@ public class DonationServiceImpl implements DonationService {
         mailService.sendMail(email, subject, text);
 
     }
-
 
 }

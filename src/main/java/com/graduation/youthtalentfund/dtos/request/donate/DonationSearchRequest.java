@@ -13,7 +13,7 @@ import java.util.List;
 
 @Data
 public class DonationSearchRequest {
-    private String userEmail;
+    private String userCode;
     private String donationCode;
     private String campaignCode;
     private String donorName;
@@ -33,8 +33,8 @@ public class DonationSearchRequest {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (request.getUserEmail() != null) {
-                predicates.add(cb.like(root.get("user").get("email"), "%" + request.getUserEmail() + "%"));
+            if (request.getUserCode() != null) {
+                predicates.add(cb.like(root.get("user").get("code"), "%" + request.getUserCode() + "%"));
             }
 
             if (request.getDonationCode() != null) {
