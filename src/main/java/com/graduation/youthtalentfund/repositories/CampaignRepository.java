@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.repositories;
 
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -18,6 +20,8 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     Optional<Campaign> findBySlug(String slug);
 
     Optional<Campaign> findByCode(String code);
+
+    boolean existsBySlug(String slug);
 
     @Query(value = "SELECT c FROM Campaign c LEFT JOIN FETCH c.staff",
             countQuery = "SELECT count(c) FROM Campaign c")
@@ -29,7 +33,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     Optional<Campaign> findBySlugWithStaff(String slug);
 
     @Query(value = """
-            SELECT 
+            SELECT
                 c.category AS category,
                 DATEDIFF(c.end_date, NOW()) AS durationsDays,
                 c.title AS title,
@@ -56,7 +60,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
                     WHERE (:status IS NULL OR c.status = :status)
                       AND (:category IS NULL OR c.category = :category)
                       AND (
-                             :keyword IS NULL 
+                             :keyword IS NULL
                              OR c.title LIKE CONCAT('%', :keyword, '%')
                              OR c.description LIKE CONCAT('%', :keyword, '%')
                       )
@@ -99,4 +103,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
         """,
             nativeQuery = true)
     Optional<CampaignDetailProjection> findByCodeOrSlug(@Param("value") String value);
+
+    @Query("SELECT c FROM Campaign c WHERE c.status NOT IN (:excludedStatuses)")
+    List<Campaign> findAllActiveCampaigns(@Param("excludedStatuses") List<CampaignStatus> excludedStatuses);
 }
