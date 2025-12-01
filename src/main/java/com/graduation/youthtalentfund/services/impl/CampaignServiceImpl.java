@@ -1,10 +1,11 @@
 package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.User;
-import com.graduation.youthtalentfund.enums.CampaignCategory;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
+import com.graduation.youthtalentfund.exceptions.BadRequestException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
@@ -13,15 +14,23 @@ import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.CampaignService;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
+import com.graduation.youthtalentfund.utils.ImageUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +38,16 @@ public class CampaignServiceImpl implements CampaignService {
     private final CampaignRepository campaignRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final CodeGenerator codeGenerator;
+
+    @Value("${cdn.base-url}")
+    private String cdnBaseUrl;
+
+    @Value("${minio.bucket-name}")
+    private String bucketName;
+
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList("image/jpeg", "image/png", "image/gif");
+    private static final long MAX_FILE_SIZE = 15 * 1024 * 1024;
 
     @Override
     public Page<CampaignShortProjection> searchCampaigns(String status, String category, String keyword, int page, int size) {
@@ -42,32 +61,73 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Transactional
     @Override
-    public Campaign createCampaign(CreateCampaignDTO request) {
+    public CampaignDetailDTO createCampaign(CreateCampaignDTO request, MultipartFile image) {
         User currentUser = getCurrentUser();
 
         User assignee = determineAssignee(currentUser, request.getAssigneeCode());
 
-        //String imagePath = fileStorageService.storeFile(request.getCoverImage());
+        String generatedCode = CodeGenerator.generateCampaignCode();
 
-        // 4. Build Campaign
+        String storedPath = null;
+
+        if (image != null && !image.isEmpty()) {
+            if (!ALLOWED_IMAGE_TYPES.contains(image.getContentType()))
+                throw new BadRequestException("Chỉ chấp nhận các định dạng image ảnh (JPEG, PNG, GIF).");
+            if (image.getSize() > MAX_FILE_SIZE)
+                throw new BadRequestException("Kích thước image không được vượt quá 15MB.");
+
+            String extension = StringUtils.getFilenameExtension(image.getOriginalFilename());
+
+            String objectName = String.format("campaigns/%s/%s.%s",
+                    generatedCode,
+                    UUID.randomUUID(),
+                    extension);
+
+            Map<String, String> uploadResult = fileStorageService.storeFile(image, objectName);
+            storedPath = uploadResult.get("original");
+        }
+
+        CampaignStatus startStatus = request.getStartDate().isAfter(LocalDateTime.now())
+                ? CampaignStatus.PENDING
+                : CampaignStatus.IN_PROGRESS;
+
         Campaign campaign = Campaign.builder()
                 .title(request.getTitle())
-                .slug(generateUniqueSlug(request.getTitle()))
-                .code(CodeGenerator.generateCampaignCode())
+                .slug(codeGenerator.generateUniqueSlug(request.getTitle()))
+                .story(request.getStory())
+                .code(generatedCode)
                 .description(request.getDescription())
                 .targetAmount(request.getTargetAmount())
                 .category(request.getCategory())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
-                .coverImagePath(imagePath)
-                .status(CampaignStatus.PENDING)
+                .coverImagePath(storedPath)
+                .status(startStatus)
                 .currentAmount(BigDecimal.ZERO)
-
+                .location(request.getLocation())
                 .staff(assignee)
-                .createdBy(currentUser.getId())
                 .build();
 
-        return campaignRepository.save(campaign);
+        Campaign saved = campaignRepository.save(campaign);
+        return mapCampaignToDTO(saved);
+    }
+
+    @Override
+    public CampaignStatus determineStatus(Campaign campaign) {
+        LocalDateTime now = LocalDateTime.now();
+        if (campaign.getStaff() == null) {
+            return CampaignStatus.ON_HOLD;
+        }
+        if (campaign.getEndDate().isBefore(now)) {
+            return CampaignStatus.COMPLETED;
+        }
+        if (campaign.getStartDate().isAfter(now)) {
+            return CampaignStatus.PENDING;
+        }
+        if (campaign.getStartDate().isBefore(now) && campaign.getEndDate().isAfter(now)) {
+            return CampaignStatus.IN_PROGRESS;
+        }
+        return campaign.getStatus();
     }
 
     private User determineAssignee(User currentUser, String assigneeCode) {
@@ -75,8 +135,17 @@ public class CampaignServiceImpl implements CampaignService {
                 .anyMatch(role -> role.getRole().getName().equals("ADMIN"));
         if (isAdmin) {
             if (assigneeCode != null && !assigneeCode.isBlank()) {
-                return userRepository.findByCode(assigneeCode)
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên với mã: " + assigneeCode));
+                User assignee = userRepository.findByCode(assigneeCode)
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhân viên với mã: " + assigneeCode));
+
+                boolean isStaff = assignee.getUserRoles().stream()
+                        .anyMatch(role -> role.getRole().getName().equals("STAFF"));
+
+                if (!isStaff) {
+                    throw new BadRequestException("Người được phân công không phải STAFF");
+                }
+
+                return assignee;
             }
             return currentUser;
         }
@@ -86,6 +155,36 @@ public class CampaignServiceImpl implements CampaignService {
     private User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Lỗi xác thực: Không tìm thấy thông tin người dùng."));
+                .orElseThrow(() -> new ResourceNotFoundException("Lỗi xác thực: Không tìm thấy thông tin người dùng."));
+    }
+
+    private CampaignDetailDTO mapCampaignToDTO(Campaign campaign) {
+        CampaignDetailDTO.StaffInfoDTO staffDTO = null;
+        if (campaign.getStaff() != null) {
+            User s = campaign.getStaff();
+            staffDTO = CampaignDetailDTO.StaffInfoDTO.builder()
+                    .fullName(s.getFullName())
+                    .code(s.getCode())
+                    .email(s.getEmail())
+                    .status(s.getStatus())
+                    .build();
+        }
+        return CampaignDetailDTO.builder()
+                .code(campaign.getCode())
+                .title(campaign.getTitle())
+                .slug(campaign.getSlug())
+                .description(campaign.getDescription())
+                .location(campaign.getLocation())
+                .story(campaign.getStory())
+                .currentAmount(campaign.getCurrentAmount())
+                .targetAmount(campaign.getTargetAmount())
+                .startDate(campaign.getStartDate())
+                .endDate(campaign.getEndDate())
+                .createdAt(campaign.getCreatedAt())
+                .category(campaign.getCategory())
+                .status(campaign.getStatus())
+                .coverImage(ImageUtils.build(campaign.getCoverImagePath()))
+                .assignee(staffDTO)
+                .build();
     }
 }

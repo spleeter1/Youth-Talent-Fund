@@ -1,11 +1,15 @@
 package com.graduation.youthtalentfund.controllers;
 
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
+import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import com.graduation.youthtalentfund.services.CampaignService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,14 +35,15 @@ public class CampaignController {
     }
 
     @GetMapping("/public/campaigns/detail")
-    public ResponseEntity<CampaignDetailProjection> getDetail(@RequestParam("value") String value){
+    public ResponseEntity<CampaignDetailProjection> getDetail(@RequestParam("value") String value) {
         return ResponseEntity.ok(campaignService.getByCodeOrSlug(value));
     }
 
     // admin
-    @PostMapping("/management/campaign")
-    public ResponseEntity<?> createCampaign(@RequestPart("data") CreateCampaignDTO request,
-                                            @RequestPart(value = "image", required = false) MultipartFile image){
-        return ResponseEntity.ok("");
+    @PostMapping(value="/management/campaign", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CampaignDetailDTO> createCampaign(@RequestPart("data") @Valid CreateCampaignDTO request,
+                                            @RequestPart(value = "image", required = false) MultipartFile image) {
+        CampaignDetailDTO newCampaign = campaignService.createCampaign(request, image);
+        return ResponseEntity.ok(newCampaign);
     }
 }

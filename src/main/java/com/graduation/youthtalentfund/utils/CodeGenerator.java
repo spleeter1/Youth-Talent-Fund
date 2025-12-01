@@ -75,7 +75,7 @@ public class CodeGenerator {
         return "REP-" + uuidPart;
     }
 
-    private String generateUniqueSlug(String title) {
+    public String generateUniqueSlug(String title) {
         String baseSlug = toSlug(title);
         String slug = baseSlug;
         int count = 1;

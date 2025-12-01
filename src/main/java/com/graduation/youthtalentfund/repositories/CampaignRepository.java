@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.repositories;
 
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -101,4 +103,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
         """,
             nativeQuery = true)
     Optional<CampaignDetailProjection> findByCodeOrSlug(@Param("value") String value);
+
+    @Query("SELECT c FROM Campaign c WHERE c.status NOT IN (:excludedStatuses)")
+    List<Campaign> findAllActiveCampaigns(@Param("excludedStatuses") List<CampaignStatus> excludedStatuses);
 }
