@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
+import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.User;
@@ -110,6 +111,67 @@ public class CampaignServiceImpl implements CampaignService {
 
         Campaign saved = campaignRepository.save(campaign);
         return mapCampaignToDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public CampaignDetailDTO updateCampaign(String code, UpdateCampaignDTO updateCampaignDTO, MultipartFile image){
+
+        Campaign campaign = campaignRepository.findByCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Campaign không tồn tại"));
+
+        User currentUser = getCurrentUser();
+        boolean isAdmin = currentUser.getUserRoles().stream()
+                .anyMatch(role -> role.getRole().getName().equals("ADMIN"));
+
+        if (!isAdmin && !campaign.getStaff().getId().equals(currentUser.getId())) {
+            throw new BadRequestException("Bạn không có quyền cập nhật chiến dịch này");
+        }
+
+        if (!campaign.getStatus().equals(CampaignStatus.PENDING)) {
+            throw new BadRequestException("Chỉ có chiến dịch ở trạng thái PENDING mới được chỉnh sửa.");
+        }
+
+        if (updateCampaignDTO.getStartDate().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("StartDate không được nhỏ hơn thời điểm hiện tại.");
+        }
+
+        User assignee = determineAssignee(currentUser, updateCampaignDTO.getAssigneeCode());
+        campaign.setStaff(assignee);
+
+        campaign.setTitle(updateCampaignDTO.getTitle());
+        campaign.setSlug(codeGenerator.generateUniqueSlug(updateCampaignDTO.getTitle()));
+        campaign.setDescription(updateCampaignDTO.getDescription());
+        campaign.setLocation(updateCampaignDTO.getLocation());
+        campaign.setStory(updateCampaignDTO.getStory());
+        campaign.setTargetAmount(updateCampaignDTO.getTargetAmount());
+        campaign.setStartDate(updateCampaignDTO.getStartDate());
+        campaign.setEndDate(updateCampaignDTO.getEndDate());
+        campaign.setCategory(updateCampaignDTO.getCategory());
+
+        if (image != null && !image.isEmpty()) {
+            if (!ALLOWED_IMAGE_TYPES.contains(image.getContentType()))
+                throw new BadRequestException("Chỉ chấp nhận các định dạng ảnh (JPEG, PNG, GIF).");
+            if (image.getSize() > MAX_FILE_SIZE)
+                throw new BadRequestException("Kích thước ảnh không được vượt quá 15MB.");
+
+            if (campaign.getCoverImagePath() != null) {
+                fileStorageService.deleteFile(campaign.getCoverImagePath());
+            }
+
+            String extension = StringUtils.getFilenameExtension(image.getOriginalFilename());
+            String objectName = String.format("campaigns/%s/%s.%s",
+                    campaign.getCode(),
+                    UUID.randomUUID(),
+                    extension);
+
+            Map<String, String> uploadResult = fileStorageService.storeFile(image, objectName);
+            campaign.setCoverImagePath(uploadResult.get("original"));
+        }
+
+        Campaign updated = campaignRepository.save(campaign);
+
+        return mapCampaignToDTO(updated);
     }
 
     @Override
