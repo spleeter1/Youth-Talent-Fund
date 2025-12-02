@@ -39,13 +39,13 @@ public class DataInitializer implements CommandLineRunner {
             // --- TẠO ROLES ---
             System.out.println("Initializing roles...");
             Role adminRole = new Role();
-            adminRole.setName("ROLE_ADMIN");
+            adminRole.setName("ADMIN");
 
             Role staffRole = new Role();
-            staffRole.setName("ROLE_STAFF");
+            staffRole.setName("STAFF");
 
             Role userRole = new Role();
-            userRole.setName("ROLE_USER");
+            userRole.setName("USER");
 
             roleRepository.saveAll(List.of(adminRole, staffRole, userRole));
             System.out.println("Roles initialized.");
