@@ -200,6 +200,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalStateException("Admin không được xóa admin khác");
         }
 
+        targetUser.getUserRoles().clear();
         targetUser.setStatus(UserStatus.DELETE);
         targetUser.setFullName("Deleted User");
         targetUser.setPassword("youngthTalentPassword");
@@ -211,12 +212,12 @@ public class UserServiceImpl implements UserService {
 
         String subject = "Admin đã xoá tài khoản của bạn";
         String content = "Admin đã xoá tài khoản của bạn, vui lòng liên hệ Admin tổ chức";
-        sendToStaffEmail(targetUser.getEmail(),subject,content);
+        sendToStaffEmail(targetUser.getEmail(), subject, content);
     }
 
     @Override
     @Transactional
-    public void changeStaffPassword(String targetEmail, AdminChangePasswordRequest request){
+    public void changeStaffPassword(String targetEmail, AdminChangePasswordRequest request) {
         User targetUser = userRepository.findByEmail(targetEmail).orElseThrow(() -> new ResourceNotFoundException("User", "email", targetEmail));
 
         String actingEmail = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -235,7 +236,7 @@ public class UserServiceImpl implements UserService {
 
         String subject = "Admin đã đổi mật khẩu của bạn";
         String content = "Mật khẩu của bạn đã được Admin đặt lại, vui lòng liên hệ Admin tổ chức";
-        sendToStaffEmail(targetUser.getEmail(),subject,content);
+        sendToStaffEmail(targetUser.getEmail(), subject, content);
     }
 
     private void validateAvatarFile(MultipartFile file) {
@@ -277,12 +278,16 @@ public class UserServiceImpl implements UserService {
     }
 
     private void sendToStaffEmail(String toEmail, String subject, String textContent) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(toEmail);
-        message.setSubject(subject);
-        message.setText(textContent);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(textContent);
 
-        mailSender.send(message);
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.out.println("[WARN] Gửi email thất bại: " + e.getMessage());
+        }
     }
 }
