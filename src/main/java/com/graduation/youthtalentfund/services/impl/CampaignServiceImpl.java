@@ -130,11 +130,6 @@ public class CampaignServiceImpl implements CampaignService {
 
         CampaignStatus status = campaign.getStatus();
 
-        if (updateCampaignDTO.getStartDate() != null &&
-                updateCampaignDTO.getStartDate().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("StartDate không được nhỏ hơn thời điểm hiện tại.");
-        }
-
         boolean canEditFull = status == CampaignStatus.PENDING;
         boolean canEditPartial = status == CampaignStatus.IN_PROGRESS || status == CampaignStatus.ON_HOLD;
 
@@ -148,6 +143,16 @@ public class CampaignServiceImpl implements CampaignService {
 
         if (updateCampaignDTO.getTargetAmount() != null) {
             updateCampaignGoal(campaign, updateCampaignDTO.getTargetAmount());
+        }
+
+        if (updateCampaignDTO.getEndDate() != null) {
+            if (updateCampaignDTO.getEndDate().isBefore(LocalDateTime.now().plusDays(1))) {
+                throw new IllegalArgumentException("endDate phải lớn hơn hiện tại ít nhất 1 ngày");
+            }
+            if (updateCampaignDTO.getEndDate().isBefore(campaign.getStartDate().plusDays(7))) {
+                throw new IllegalArgumentException("endDate phải lớn hơn startDate ít nhất 7 ngày");
+            }
+            campaign.setEndDate(updateCampaignDTO.getEndDate());
         }
 
         if (canEditFull) {
@@ -164,9 +169,13 @@ public class CampaignServiceImpl implements CampaignService {
             if (updateCampaignDTO.getStory() != null) {
                 campaign.setStory(updateCampaignDTO.getStory());
             }
-            if (updateCampaignDTO.getStartDate() != null) {
-                campaign.setStartDate(updateCampaignDTO.getStartDate());
+
+            if (updateCampaignDTO.getStartDate() != null &&
+                    updateCampaignDTO.getStartDate().isBefore(LocalDateTime.now())) {
+                throw new BadRequestException("StartDate không được nhỏ hơn thời điểm hiện tại.");
             }
+            else  campaign.setStartDate(updateCampaignDTO.getStartDate());
+
             if (updateCampaignDTO.getEndDate() != null) {
                 campaign.setEndDate(updateCampaignDTO.getEndDate());
             }
