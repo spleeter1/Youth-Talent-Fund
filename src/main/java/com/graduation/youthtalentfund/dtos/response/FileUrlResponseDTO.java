@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FileResponseDTO {
+public class FileUrlResponseDTO {
     private String original;
     private String thumbnail;
 }
