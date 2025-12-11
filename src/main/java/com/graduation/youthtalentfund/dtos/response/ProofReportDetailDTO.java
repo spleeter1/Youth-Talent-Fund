@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.dtos.response;
 
+import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
 import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.ProofReport;
 import com.graduation.youthtalentfund.enums.ProofReportType;
@@ -18,6 +19,7 @@ public class ProofReportDetailDTO {
     private ProofReportType type;
     private AuthorDTO author;
     private List<AttachmentDTO> attachments;
+    private DonationDataResponse transaction;
 
     @Data
     @Builder

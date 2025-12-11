@@ -6,6 +6,7 @@ import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateRespons
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.CustomUserDetails;
+import com.graduation.youthtalentfund.dtos.request.CreateDonationRptDTO;
 import com.graduation.youthtalentfund.entities.Donation;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
@@ -36,6 +37,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
 public class DonationServiceImpl implements DonationService {
@@ -51,7 +54,8 @@ public class DonationServiceImpl implements DonationService {
         Donation donation = new Donation();
 
         Optional<Campaign> campaignOptional = campaignRepository.findByCode(donationCreateRequest.getCampaignCode());
-        if (campaignOptional.isEmpty()) throw new ResourceNotFoundException("Campaign", "code", donationCreateRequest.getCampaignCode());
+        if (campaignOptional.isEmpty())
+            throw new ResourceNotFoundException("Campaign", "code", donationCreateRequest.getCampaignCode());
         Campaign campaign = campaignOptional.get();
         donation.setCampaign(campaign);
 
@@ -178,4 +182,24 @@ public class DonationServiceImpl implements DonationService {
 
     }
 
+    @Override
+    @Transactional
+    public DonationDataResponse createDonationRpt(CreateDonationRptDTO createDonationRptDTO, Campaign campaign) {
+        Donation donation = Donation.builder()
+                .donorName(createDonationRptDTO.getDonorName())
+                .donorEmail(createDonationRptDTO.getDonorEmail())
+                .donorPhoneNumber(createDonationRptDTO.getPhoneNumber())
+                .isAnonymous(createDonationRptDTO.isAnonymous())
+                .code(CodeGenerator.generateDonationCode())
+                .amount(createDonationRptDTO.getTransaction())
+                .campaign(campaign)
+                .build();
+
+        BigDecimal value = createDonationRptDTO.getTransaction();
+        BigDecimal currentAmount = campaign.getCurrentAmount();
+        campaign.setCurrentAmount(value.compareTo(BigDecimal.ZERO) > 0 ? currentAmount.add(value) : currentAmount);
+        campaignRepository.save(campaign);
+        Donation saved = donationRepository.save(donation);
+        return DonationMapper.toResponseData(saved);
+    }
 }

@@ -19,4 +19,5 @@ public class CreateProofReportDTO {
     @NotNull(message = "Loại minh chứng là bắt buộc ")
     private ProofReportType type;
 
+    private CreateDonationRptDTO createDonationRptDTO;
 }

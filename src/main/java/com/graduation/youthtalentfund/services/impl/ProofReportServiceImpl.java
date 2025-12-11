@@ -6,12 +6,14 @@ import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.ProofReport;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.enums.ProofReportType;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.AttachmentRepository;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.ProofReportRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
+import com.graduation.youthtalentfund.services.DonationService;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.ProofReportService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
@@ -32,11 +34,12 @@ public class ProofReportServiceImpl implements ProofReportService {
     private static final long MAX_FILE_SIZE = 15 * 1024 * 1024;
     private static final int MAX_FILES = 5;
 
-    private UserRepository userRepository;
-    private ProofReportRepository proofReportRepository;
-    private CampaignRepository campaignRepository;
-    private FileStorageService fileStorageService;
-    private AttachmentRepository attachmentRepository;
+    private final UserRepository userRepository;
+    private final ProofReportRepository proofReportRepository;
+    private final CampaignRepository campaignRepository;
+    private final FileStorageService fileStorageService;
+    private final AttachmentRepository attachmentRepository;
+    private final DonationService donationService;
 
     private void validateFiles(MultipartFile[] files) {
         if (files == null || files.length == 0) {
@@ -69,6 +72,18 @@ public class ProofReportServiceImpl implements ProofReportService {
         Campaign campaign = campaignRepository.findByCode(campaignCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chiến dịch"));
 
+        //check type
+        ProofReportType proofReportType = createProofReportDTO.getType();
+        if (proofReportType == ProofReportType.EXPENSE) {
+            donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign);
+
+        } else if (proofReportType == ProofReportType.CONTRIBUTION) {
+            donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign);
+        } else {
+
+        }
+
+        //save
         ProofReport proofReport = ProofReport.builder()
                 .code(CodeGenerator.generateReportCode())
                 .title(createProofReportDTO.getTitle())
@@ -99,8 +114,9 @@ public class ProofReportServiceImpl implements ProofReportService {
                     .fileSize(file.getSize())
                     .build();
 
-            attachmentRepository.save(attachment);
+            attachments.add(attachment);
         }
-        return null;
+        attachmentRepository.saveAll(attachments);
+        return ProofReportDetailDTO.from(proofReport, attachments);
     }
 }
