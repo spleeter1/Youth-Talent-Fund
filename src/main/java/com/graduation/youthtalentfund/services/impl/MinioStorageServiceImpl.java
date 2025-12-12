@@ -45,28 +45,28 @@ public class MinioStorageServiceImpl implements FileStorageService {
                             .contentType(file.getContentType())
                             .build()
             );
-
-            // Tạo và upload thumbnail
-            String thumbnailObjectName = THUMBNAIL_PREFIX + objectName;
-            try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                Thumbnails.of(file.getInputStream()).size(200, 200).toOutputStream(os);
-                try(InputStream thumbnailInputStream = new ByteArrayInputStream(os.toByteArray())) {
-                    minioClient.putObject(
-                            PutObjectArgs.builder()
-                                    .bucket(bucketName)
-                                    .object(thumbnailObjectName)
-                                    .stream(thumbnailInputStream, os.size(), -1)
-                                    .contentType(file.getContentType())
-                                    .build()
-                    );
-                }
-            }
-
             Map<String, String> storedObjects = new HashMap<>();
             storedObjects.put("original", objectName);
-            storedObjects.put("thumbnail", thumbnailObjectName);
-            return storedObjects;
+            // Tạo và upload thumbnail nếu là ảnh
+            if (file.getContentType() != null && file.getContentType().startsWith("image/")) {
+                String thumbnailObjectName = THUMBNAIL_PREFIX + objectName;
+                try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                    Thumbnails.of(file.getInputStream()).size(200, 200).toOutputStream(os);
+                    try (InputStream thumbnailInputStream = new ByteArrayInputStream(os.toByteArray())) {
+                        minioClient.putObject(
+                                PutObjectArgs.builder()
+                                        .bucket(bucketName)
+                                        .object(thumbnailObjectName)
+                                        .stream(thumbnailInputStream, os.size(), -1)
+                                        .contentType(file.getContentType())
+                                        .build()
+                        );
+                    }
+                }
 
+                storedObjects.put("thumbnail", thumbnailObjectName);
+            }
+            return storedObjects;
         } catch (Exception e) {
             logger.error("Lỗi khi upload file lên MinIO", e);
             throw new FileUploadException(MessageConstants.FILE_UPLOAD_ERROR);
@@ -80,9 +80,20 @@ public class MinioStorageServiceImpl implements FileStorageService {
             minioClient.removeObject(
                     RemoveObjectArgs.builder().bucket(bucketName).object(baseObjectName).build()
             );
-            minioClient.removeObject(
-                    RemoveObjectArgs.builder().bucket(bucketName).object(THUMBNAIL_PREFIX + baseObjectName).build()
-            );
+
+            try {
+                minioClient.statObject(
+                        io.minio.StatObjectArgs.builder()
+                                .bucket(bucketName)
+                                .object(THUMBNAIL_PREFIX + baseObjectName)
+                                .build());
+
+                minioClient.removeObject(
+                        RemoveObjectArgs.builder().bucket(bucketName).object(THUMBNAIL_PREFIX + baseObjectName).build()
+                );
+            } catch (Exception ignore) {
+
+            }
         } catch (Exception e) {
             logger.error("Lỗi khi xóa object {} từ MinIO", baseObjectName, e);
         }

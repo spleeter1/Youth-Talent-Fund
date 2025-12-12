@@ -66,13 +66,13 @@ public class CodeGenerator {
 
     /**
      * Tạo mã Báo cáo (Proof Report Code).
-     * Quy tắc: REP-[8 ký tự đầu của UUID]
-     * Ví dụ: REP-A1B2C3D4
+     * Quy tắc: REP-[YYYYMMDD]-[6 ký tự ngẫu nhiên]
+     * Ví dụ: REP-20241028-P9W3R7
      * @return Mã báo cáo mới.
      */
     public static String generateReportCode() {
-        String uuidPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return "REP-" + uuidPart;
+        String datePart = new SimpleDateFormat("yyyyMMdd").format(new Date());
+        return "REP-" + datePart + "-" + generateRandomString(6);
     }
 
     public String generateUniqueSlug(String title) {

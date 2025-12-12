@@ -29,7 +29,7 @@ public class CampaignDetailDTO {
     private CampaignCategory category;
     private CampaignStatus status;
 
-    private ImageResponseDTO coverImage;
+    private FileUrlResponseDTO coverImage;
 
     private StaffInfoDTO assignee;
 
@@ -39,7 +39,7 @@ public class CampaignDetailDTO {
         private String fullName;
         private String code;
         private String email;
-        private ImageResponseDTO avatar;
+        private FileUrlResponseDTO avatar;
         private UserStatus status;
     }
 }

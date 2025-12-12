@@ -2,12 +2,16 @@ package com.graduation.youthtalentfund.entities;
 
 import com.graduation.youthtalentfund.enums.ProofReportType;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.List;
 
 @Getter
 @Setter
 @Entity
+@Builder
 @Table(name = "proof_reports", indexes = {
         @Index(name = "idx_proofreport_code", columnList = "code", unique = true)
 })
@@ -34,4 +38,7 @@ public class ProofReport extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
+
+    @OneToMany(mappedBy = "proofReport", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Attachment> attachments;
 }

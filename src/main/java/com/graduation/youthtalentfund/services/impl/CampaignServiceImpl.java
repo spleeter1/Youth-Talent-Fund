@@ -15,7 +15,7 @@ import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.CampaignService;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
-import com.graduation.youthtalentfund.utils.ImageUtils;
+import com.graduation.youthtalentfund.utils.FileUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -312,6 +312,7 @@ public class CampaignServiceImpl implements CampaignService {
                     .code(s.getCode())
                     .email(s.getEmail())
                     .status(s.getStatus())
+                    .avatar(FileUtils.build(s.getAvatarPath()))
                     .build();
         }
         return CampaignDetailDTO.builder()
@@ -328,7 +329,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .createdAt(campaign.getCreatedAt())
                 .category(campaign.getCategory())
                 .status(campaign.getStatus())
-                .coverImage(ImageUtils.build(campaign.getCoverImagePath()))
+                .coverImage(FileUtils.build(campaign.getCoverImagePath()))
                 .assignee(staffDTO)
                 .build();
     }

@@ -55,8 +55,8 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByEmail(adminEmail)) {
             System.out.println("Creating default admin account...");
 
-            Role adminRoleEntity = roleRepository.findByName("ROLE_ADMIN")
-                    .orElseThrow(() -> new RuntimeException("FATAL: ROLE_ADMIN not found after initialization!"));
+            Role adminRoleEntity = roleRepository.findByName("ADMIN")
+                    .orElseThrow(() -> new RuntimeException("FATAL: ADMIN not found after initialization!"));
 
             User adminUser = new User();
             adminUser.setEmail(adminEmail);
