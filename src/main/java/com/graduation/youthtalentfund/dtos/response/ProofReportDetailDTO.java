@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.dtos.response;
 
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
+import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.ProofReport;
 import com.graduation.youthtalentfund.enums.ProofReportType;
@@ -19,7 +20,7 @@ public class ProofReportDetailDTO {
     private ProofReportType type;
     private AuthorDTO author;
     private List<AttachmentDTO> attachments;
-    private DonationDataResponse transaction;
+    private DonationRptDTO transaction;
 
     @Data
     @Builder
@@ -41,7 +42,7 @@ public class ProofReportDetailDTO {
         private Long fileSize;
     }
 
-    public static ProofReportDetailDTO from(ProofReport report, List<Attachment> attachments) {
+    public static ProofReportDetailDTO from(ProofReport report, List<Attachment> attachments, DonationRptDTO transaction) {
 
         ProofReportDetailDTO.AuthorDTO authorDTO = ProofReportDetailDTO.AuthorDTO.builder()
                 .code(report.getAuthor().getCode())
@@ -68,6 +69,7 @@ public class ProofReportDetailDTO {
                 .type(report.getType())
                 .author(authorDTO)
                 .attachments(attachmentDTOs)
+                .transaction(transaction)
                 .build();
     }
 }

@@ -2,6 +2,7 @@ package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.CreateProofReportDTO;
 import com.graduation.youthtalentfund.dtos.response.ProofReportDetailDTO;
+import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.ProofReport;
@@ -74,14 +75,7 @@ public class ProofReportServiceImpl implements ProofReportService {
 
         //check type
         ProofReportType proofReportType = createProofReportDTO.getType();
-        if (proofReportType == ProofReportType.EXPENSE) {
-            donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign);
-
-        } else if (proofReportType == ProofReportType.CONTRIBUTION) {
-            donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign);
-        } else {
-
-        }
+        DonationRptDTO transaction = donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign, proofReportType);
 
         //save
         ProofReport proofReport = ProofReport.builder()
@@ -117,6 +111,6 @@ public class ProofReportServiceImpl implements ProofReportService {
             attachments.add(attachment);
         }
         attachmentRepository.saveAll(attachments);
-        return ProofReportDetailDTO.from(proofReport, attachments);
+        return ProofReportDetailDTO.from(proofReport, attachments, transaction);
     }
 }

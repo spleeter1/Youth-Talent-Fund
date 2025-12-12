@@ -17,7 +17,7 @@ public class CreateDonationRptDTO {
     private String donorEmail;
 
     @Pattern(
-            regexp = "^(\\+?84|0)(\\d{9})$",
+            regexp = "^$|^(\\+?84|0)(\\d{9})$",
             message = "Số điện thoại không hợp lệ"
     )
     private String phoneNumber;
@@ -25,8 +25,8 @@ public class CreateDonationRptDTO {
     @Size(max = 255, message = "Lời nhắn không được vượt quá 255 ký tự")
     private String message;
 
-    @NotNull(message = "Số tiền giao dịch không được để trống")
     private BigDecimal transaction;
 
-    private boolean isAnonymous;
+    @Builder.Default
+    private boolean isAnonymous = false;
 }

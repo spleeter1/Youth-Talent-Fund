@@ -4,7 +4,9 @@ import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
+import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.enums.ProofReportType;
 import org.springframework.data.domain.Page;
 import vn.payos.model.webhooks.Webhook;
 import com.graduation.youthtalentfund.dtos.request.CreateDonationRptDTO;
@@ -33,5 +35,5 @@ public interface DonationService {
 
     DonationDataResponse getDonation(String donationCode);
 
-    DonationDataResponse createDonationRpt (CreateDonationRptDTO createDonationRptDTO, Campaign campaign);
+    DonationRptDTO createDonationRpt (CreateDonationRptDTO createDonationRptDTO, Campaign campaign, ProofReportType proofReportType);
 }
