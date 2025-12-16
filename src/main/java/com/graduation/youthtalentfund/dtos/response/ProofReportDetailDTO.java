@@ -1,7 +1,5 @@
 package com.graduation.youthtalentfund.dtos.response;
 
-import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.ProofReport;
 import com.graduation.youthtalentfund.enums.ProofReportType;
@@ -9,6 +7,8 @@ import com.graduation.youthtalentfund.utils.FileUtils;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -18,9 +18,10 @@ public class ProofReportDetailDTO {
     private String title;
     private String content;
     private ProofReportType type;
+    private BigDecimal transactionAmount;
     private AuthorDTO author;
+    private LocalDateTime createdAt;
     private List<AttachmentDTO> attachments;
-    private DonationRptDTO transaction;
 
     @Data
     @Builder
@@ -42,7 +43,7 @@ public class ProofReportDetailDTO {
         private Long fileSize;
     }
 
-    public static ProofReportDetailDTO from(ProofReport report, List<Attachment> attachments, DonationRptDTO transaction) {
+    public static ProofReportDetailDTO from(ProofReport report, List<Attachment> attachments) {
 
         ProofReportDetailDTO.AuthorDTO authorDTO = ProofReportDetailDTO.AuthorDTO.builder()
                 .code(report.getAuthor().getCode())
@@ -67,9 +68,10 @@ public class ProofReportDetailDTO {
                 .title(report.getTitle())
                 .content(report.getContent())
                 .type(report.getType())
+                .transactionAmount(report.getTransactionAmount())
                 .author(authorDTO)
                 .attachments(attachmentDTOs)
-                .transaction(transaction)
+                .createdAt(report.getCreatedAt())
                 .build();
     }
 }

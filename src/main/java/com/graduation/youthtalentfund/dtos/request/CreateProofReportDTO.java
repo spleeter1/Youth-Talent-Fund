@@ -1,10 +1,10 @@
 package com.graduation.youthtalentfund.dtos.request;
 
 import com.graduation.youthtalentfund.enums.ProofReportType;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
+
+import java.math.BigDecimal;
 
 @Data
 public class CreateProofReportDTO {
@@ -19,5 +19,7 @@ public class CreateProofReportDTO {
     @NotNull(message = "Loại minh chứng là bắt buộc ")
     private ProofReportType type;
 
-    private CreateDonationRptDTO createDonationRptDTO;
+    @Digits(integer = 15, fraction = 2, message = "Số tiền không hợp lệ")
+    @DecimalMin(value = "1000.00", message = "Số tiền phải lớn hơn 1000")
+    private BigDecimal transactionAmount;
 }

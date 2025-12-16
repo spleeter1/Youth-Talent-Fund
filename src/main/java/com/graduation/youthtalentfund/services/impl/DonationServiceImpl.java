@@ -4,13 +4,10 @@ import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.CustomUserDetails;
-import com.graduation.youthtalentfund.dtos.request.CreateDonationRptDTO;
 import com.graduation.youthtalentfund.entities.Donation;
 import com.graduation.youthtalentfund.entities.User;
-import com.graduation.youthtalentfund.enums.ProofReportType;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.DonationRepository;
@@ -21,7 +18,6 @@ import com.graduation.youthtalentfund.services.PayOsService;
 import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.mapper.DonationMapper;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,10 +36,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
@@ -188,78 +180,5 @@ public class DonationServiceImpl implements DonationService {
         String subject = "Quỹ ủng hộ tài năng trẻ";
         mailService.sendMail(email, subject, text);
 
-    }
-
-    @Override
-    @Transactional
-    public DonationRptDTO createDonationRpt(CreateDonationRptDTO createDonationRptDTO, Campaign campaign, ProofReportType proofReportType) {
-        if (proofReportType != ProofReportType.EXPENSE && proofReportType != ProofReportType.CONTRIBUTION) return null;
-
-        if(createDonationRptDTO == null)
-            throw new IllegalArgumentException("Thông tin donation là bắt buộc với type " + proofReportType);
-
-        BigDecimal amount = createDonationRptDTO.getTransaction();
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new IllegalArgumentException("Số tiền giao dịch của phải khác 0");
-        }
-
-        boolean isAnonymous = false;
-        String donorName = "Người quyên góp không biết tên";
-        String donorEmail = "";
-        String donorPhone = "";
-        String paymentStatus = null;
-        if (proofReportType == ProofReportType.EXPENSE) {
-            donorName = "Youth Talent Fund";
-            donorEmail = "admin@youthtalentfund.com";
-            donorPhone = "0340020112";
-            if (amount.compareTo(BigDecimal.ZERO) > 0) {
-                amount = amount.negate();
-            }
-            paymentStatus = "EXPENSE_MANUAL";
-        } else {
-            Set<ConstraintViolation<CreateDonationRptDTO>> violations =
-                    validator.validate(createDonationRptDTO);
-
-            if (!violations.isEmpty()) {
-                String errors = violations.stream()
-                        .map(v -> v.getPropertyPath() + ": " + v.getMessage())
-                        .collect(Collectors.joining(", "));
-                throw new IllegalArgumentException("Thông tin donation không hợp lệ: " + errors);
-            }
-
-            isAnonymous = createDonationRptDTO.isAnonymous();
-            donorName = createDonationRptDTO.getDonorName();
-            donorEmail = createDonationRptDTO.getDonorEmail();
-            donorPhone = createDonationRptDTO.getPhoneNumber();
-            paymentStatus = "DONATE_MANUAL";
-        }
-
-        Donation donation = Donation.builder()
-                .donorName(donorName)
-                .donorEmail(donorEmail)
-                .donorPhoneNumber(donorPhone)
-                .isAnonymous(isAnonymous)
-                .message(createDonationRptDTO.getMessage())
-                .code(CodeGenerator.generateDonationCode())
-                .amount(amount)
-                .campaign(campaign)
-                .paymentStatus(paymentStatus)
-                .build();
-        BigDecimal currentAmount = campaign.getCurrentAmount();
-        campaign.setCurrentAmount(amount.compareTo(BigDecimal.ZERO) > 0 ? currentAmount.add(amount) : currentAmount);
-        campaignRepository.save(campaign);
-        Donation saved = donationRepository.save(donation);
-
-        return DonationRptDTO.builder()
-                .code(saved.getCode())
-                .amount(saved.getAmount())
-                .donorName(saved.getDonorName())
-                .donorEmail(saved.getDonorEmail())
-                .donorPhoneNumber(saved.getDonorPhoneNumber())
-                .message(saved.getMessage())
-                .isAnonymous(saved.isAnonymous())
-                .transactionCode(saved.getTransactionCode())
-                .paymentStatus(saved.getPaymentStatus())
-                .build();
     }
 }
