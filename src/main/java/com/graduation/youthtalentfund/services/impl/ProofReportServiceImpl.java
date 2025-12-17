@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Service
@@ -78,8 +79,14 @@ public class ProofReportServiceImpl implements ProofReportService {
             throw new BadRequestException(
                     "Thiếu thông tin giao dịch"
             );
+        } else if(proofReportType == ProofReportType.PROGRESS){
+            createProofReportDTO.setTransactionAmount(null);
         }
-
+        BigDecimal currAmount = campaign.getCurrentAmount();
+        if(proofReportType != ProofReportType.PROGRESS){
+            campaign.setCurrentAmount(currAmount.add(createProofReportDTO.getTransactionAmount()));
+        }
+        campaignRepository.save(campaign);
         //save
         ProofReport proofReport = ProofReport.builder()
                 .code(CodeGenerator.generateReportCode())
