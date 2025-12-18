@@ -2,7 +2,6 @@ package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.CreateProofReportDTO;
 import com.graduation.youthtalentfund.dtos.response.ProofReportDetailDTO;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationRptDTO;
 import com.graduation.youthtalentfund.entities.Attachment;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.ProofReport;
@@ -14,24 +13,26 @@ import com.graduation.youthtalentfund.repositories.AttachmentRepository;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.ProofReportRepository;
 import com.graduation.youthtalentfund.repositories.UserRepository;
-import com.graduation.youthtalentfund.services.DonationService;
 import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.services.ProofReportService;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class ProofReportServiceImpl implements ProofReportService {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("application/pdf", "image/pdf", "image/jpeg", "image/jpg", "image/png");
+    private static final Set<String> ALLOWED_TYPES = Set.of("application/pdf", "image/jpeg", "image/jpg", "image/png");
     private static final long MAX_FILE_SIZE = 15 * 1024 * 1024;
     private static final int MAX_FILES = 5;
 
@@ -40,7 +41,6 @@ public class ProofReportServiceImpl implements ProofReportService {
     private final CampaignRepository campaignRepository;
     private final FileStorageService fileStorageService;
     private final AttachmentRepository attachmentRepository;
-    private final DonationService donationService;
 
     private void validateFiles(MultipartFile[] files) {
         if (files == null || files.length == 0) {
@@ -75,8 +75,18 @@ public class ProofReportServiceImpl implements ProofReportService {
 
         //check type
         ProofReportType proofReportType = createProofReportDTO.getType();
-        DonationRptDTO transaction = donationService.createDonationRpt(createProofReportDTO.getCreateDonationRptDTO(), campaign, proofReportType);
-
+        if (proofReportType != ProofReportType.PROGRESS && createProofReportDTO.getTransactionAmount() == null) {
+            throw new BadRequestException(
+                    "Thiếu thông tin giao dịch"
+            );
+        } else if(proofReportType == ProofReportType.PROGRESS){
+            createProofReportDTO.setTransactionAmount(null);
+        }
+        BigDecimal currAmount = campaign.getCurrentAmount();
+        if(proofReportType != ProofReportType.PROGRESS){
+            campaign.setCurrentAmount(currAmount.add(createProofReportDTO.getTransactionAmount()));
+        }
+        campaignRepository.save(campaign);
         //save
         ProofReport proofReport = ProofReport.builder()
                 .code(CodeGenerator.generateReportCode())
@@ -85,6 +95,7 @@ public class ProofReportServiceImpl implements ProofReportService {
                 .type(createProofReportDTO.getType())
                 .author(author)
                 .campaign(campaign)
+                .transactionAmount(createProofReportDTO.getTransactionAmount() != null ? createProofReportDTO.getTransactionAmount() : null)
                 .build();
         proofReportRepository.save(proofReport);
 
@@ -111,6 +122,13 @@ public class ProofReportServiceImpl implements ProofReportService {
             attachments.add(attachment);
         }
         attachmentRepository.saveAll(attachments);
-        return ProofReportDetailDTO.from(proofReport, attachments, transaction);
+        return ProofReportDetailDTO.from(proofReport, attachments);
+    }
+
+    @Override
+    @Transactional
+    public Page<ProofReportDetailDTO> getProofReportsByCampaign(String campaignCode, ProofReportType type, Pageable pageable) {
+        Page<ProofReport> proofReports = proofReportRepository.findPageByCampaign(campaignCode, type, pageable);
+        return proofReports.map(pr -> ProofReportDetailDTO.from(pr, pr.getAttachments()));
     }
 }

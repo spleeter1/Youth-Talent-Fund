@@ -1,14 +1,14 @@
 package com.graduation.youthtalentfund.entities;
 
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @Entity
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Table(name = "attachments", indexes = {
         @Index(name = "idx_attachment_filepath", columnList = "filePath", unique = true)
 })
