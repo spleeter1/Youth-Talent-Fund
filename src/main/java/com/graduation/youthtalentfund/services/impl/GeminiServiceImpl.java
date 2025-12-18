@@ -25,11 +25,10 @@ public class GeminiServiceImpl implements GeminiService {
     @Override
     public String chat(String prompt) {
 
-        String url =
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key="
-                        + apiKey;
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + apiKey;
 
-        Map<String, Object> body = Map.of(
+        // đưa lại request về dạng json
+        Map<String, Object> bodyRequest = Map.of(
                 "contents", List.of(
                         Map.of(
                                 "parts", List.of(
@@ -42,20 +41,20 @@ public class GeminiServiceImpl implements GeminiService {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<Map<String, Object>> request =
-                new HttpEntity<>(body, headers);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(bodyRequest, headers);
+        // call gemini
+        ResponseEntity<?> response = restTemplate.postForEntity(url, request, Map.class);
+        // parse json response
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        if(body == null) return null;
 
-        ResponseEntity<Map> response =
-                restTemplate.postForEntity(url, request, Map.class);
+        List<?> candidates = (List<?>) body.get("candidates");
+        if (candidates == null || candidates.isEmpty()) return null;
 
-        Map<?, ?> candidate =
-                (Map<?, ?>) ((List<?>) response.getBody().get("candidates")).get(0);
+        Map<?, ?> candidate = (Map<?, ?>) candidates.getFirst();
+        Map<?, ?> content = (Map<?, ?>) candidate.get("content");
 
-        Map<?, ?> content =
-                (Map<?, ?>) candidate.get("content");
-
-        Map<?, ?> part =
-                (Map<?, ?>) ((List<?>) content.get("parts")).get(0);
+        Map<?, ?> part = (Map<?, ?>) ((List<?>) content.get("parts")).getFirst();
 
         return part.get("text").toString();
     }
