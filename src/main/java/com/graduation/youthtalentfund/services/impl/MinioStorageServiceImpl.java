@@ -14,10 +14,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +37,8 @@ public class MinioStorageServiceImpl implements FileStorageService {
     private String bucketName;
 
     public static final String THUMBNAIL_PREFIX = "thumb_";
+
+    private final S3Presigner s3Presigner;
 
     @Override
     public Map<String, String> storeFile(MultipartFile file, String objectName) {
@@ -97,5 +104,26 @@ public class MinioStorageServiceImpl implements FileStorageService {
         } catch (Exception e) {
             logger.error("Lỗi khi xóa object {} từ MinIO", baseObjectName, e);
         }
+    }
+
+
+    @Override
+    public String generatePresignedDownloadUrl(String objectKey, Duration duration) {
+
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build();
+
+        GetObjectPresignRequest presignRequest =
+                GetObjectPresignRequest.builder()
+                        .signatureDuration(duration)
+                        .getObjectRequest(getObjectRequest)
+                        .build();
+
+        PresignedGetObjectRequest presignedRequest =
+                s3Presigner.presignGetObject(presignRequest);
+
+        return presignedRequest.url().toString();
     }
 }
