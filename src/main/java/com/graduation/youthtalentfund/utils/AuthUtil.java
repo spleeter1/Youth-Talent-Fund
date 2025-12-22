@@ -23,4 +23,12 @@ public class AuthUtil {
         return customUserDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
+
+    public static boolean isAdminOrStaff(CustomUserDetails customUserDetails) {
+        return customUserDetails.getAuthorities().stream()
+                .anyMatch(a -> {
+                    String authority = a.getAuthority();
+                    return authority.equals("ROLE_ADMIN") || authority.equals("ROLE_STAFF");
+                });
+    }
 }

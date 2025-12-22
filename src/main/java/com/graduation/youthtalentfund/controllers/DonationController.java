@@ -2,16 +2,18 @@ package com.graduation.youthtalentfund.controllers;
 
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
+import com.graduation.youthtalentfund.dtos.response.donate.TopDonatorResponse;
 import com.graduation.youthtalentfund.services.DonationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.payos.model.webhooks.Webhook;
 
 @RestController
-@RequestMapping("/api/public/donate")
+@RequestMapping("/api/public/donation")
 @RequiredArgsConstructor
 public class DonationController {
 
@@ -29,6 +31,12 @@ public class DonationController {
         donationService.handleWebhookData(hookData);
 
         return ResponseEntity.status(200).body(hookData); // PayOS want 200 return
+    }
+
+    @GetMapping("/top-donate")
+    public ResponseEntity<Page<TopDonatorResponse>> getTopDonatorPublic() {
+        Page<TopDonatorResponse> responses = donationService.getTopDonatorPublic();
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/")

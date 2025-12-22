@@ -1,8 +1,10 @@
 package com.graduation.youthtalentfund.services;
 
+import com.graduation.youthtalentfund.dtos.request.CampaignStatisticRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
@@ -19,4 +21,6 @@ public interface CampaignService {
 
     CampaignDetailDTO updateCampaign(String campaignCode, UpdateCampaignDTO updateCampaignDTO, MultipartFile image);
     CampaignDetailDTO updateCampaignStatus(String code, CampaignStatus newStatus);
+
+    Page<CampaignStatisticResponse> getCampaignStatistic(CampaignStatisticRequest request);
 }

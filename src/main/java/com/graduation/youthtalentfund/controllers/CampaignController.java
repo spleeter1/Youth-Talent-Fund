@@ -1,8 +1,10 @@
 package com.graduation.youthtalentfund.controllers;
 
+import com.graduation.youthtalentfund.dtos.request.CampaignStatisticRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
@@ -81,4 +83,11 @@ public class CampaignController {
         CampaignDetailDTO updated = campaignService.updateCampaignStatus(code, newStatus);
         return ResponseEntity.ok(updated);
     }
+
+    @PostMapping("/management/campaign/statistic")
+    public ResponseEntity<Page<CampaignStatisticResponse>> getCampaignStatistic(@Valid CampaignStatisticRequest request) {
+        Page<CampaignStatisticResponse> responses = campaignService.getCampaignStatistic(request);
+        return ResponseEntity.ok(responses);
+    }
+
 }

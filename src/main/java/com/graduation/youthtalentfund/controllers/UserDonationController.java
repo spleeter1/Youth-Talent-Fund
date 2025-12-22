@@ -2,7 +2,9 @@ package com.graduation.youthtalentfund.controllers;
 
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCancelRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
+import com.graduation.youthtalentfund.dtos.request.donate.UserDonationStatisticRequest;
 import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
+import com.graduation.youthtalentfund.dtos.response.donate.UserDonationStatisticResponse;
 import com.graduation.youthtalentfund.services.DonationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth/donate")
+@RequestMapping("/api/auth/donation")
 @RequiredArgsConstructor
 public class UserDonationController {
     private final DonationService donationService;
@@ -23,14 +25,20 @@ public class UserDonationController {
     }
 
     @PostMapping("/history")
-    public ResponseEntity<?> listDonations(@Valid @RequestBody DonationSearchRequest request) {
+    public ResponseEntity<Page<DonationDataResponse>> listDonations(@Valid @RequestBody DonationSearchRequest request) {
         Page<DonationDataResponse> donationPage = donationService.searchDonation(request);
         return ResponseEntity.ok(donationPage);
     }
 
     @GetMapping("/history")
-    public ResponseEntity<?> viewDonation(@Valid @RequestParam String code) {
+    public ResponseEntity<DonationDataResponse> getDonation(@Valid @RequestParam String code) {
         DonationDataResponse donationDataResponse = donationService.getDonation(code);
         return ResponseEntity.ok(donationDataResponse);
+    }
+
+    @PostMapping("/statistic/user")
+    public ResponseEntity<Page<UserDonationStatisticResponse>> getUserDonationStatistic(@Valid @RequestBody UserDonationStatisticRequest request) {
+        Page<UserDonationStatisticResponse> userDonationStatResponses = donationService.getUserDonationStatistic(request);
+        return ResponseEntity.ok(userDonationStatResponses);
     }
 }

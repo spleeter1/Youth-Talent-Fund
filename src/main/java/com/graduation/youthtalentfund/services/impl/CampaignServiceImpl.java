@@ -1,8 +1,10 @@
 package com.graduation.youthtalentfund.services.impl;
 
+import com.graduation.youthtalentfund.dtos.request.CampaignStatisticRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
@@ -11,6 +13,7 @@ import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticProjection;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.CampaignService;
 import com.graduation.youthtalentfund.services.FileStorageService;
@@ -20,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -332,5 +336,19 @@ public class CampaignServiceImpl implements CampaignService {
                 .coverImage(FileUtils.build(campaign.getCoverImagePath()))
                 .assignee(staffDTO)
                 .build();
+    }
+
+    @Override
+    public Page<CampaignStatisticResponse> getCampaignStatistic(CampaignStatisticRequest request) {
+        Page<CampaignStatisticProjection> projections = campaignRepository.getCampaignStatistic(request.getCampaignCode(), request.getFromDate(), request.getToDate(), Pageable.ofSize(20).withPage(request.getPageNumber()));
+        return projections.map(projection -> {
+            CampaignStatisticResponse response = new CampaignStatisticResponse();
+            response.setCampaignCode(projection.getCampaignCode());
+            response.setStaffCode(projection.getStaffCode());
+            response.setTitle(projection.getTitle());
+            response.setDonationCount(projection.getDonationCount());
+            response.setTotalReceived(projection.getTotalReceived());
+            return response;
+        });
     }
 }
