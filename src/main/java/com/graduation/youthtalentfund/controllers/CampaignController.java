@@ -85,7 +85,7 @@ public class CampaignController {
     }
 
     @PostMapping("/management/campaign/statistic")
-    public ResponseEntity<Page<CampaignStatisticResponse>> getCampaignStatistic(@Valid CampaignStatisticRequest request) {
+    public ResponseEntity<Page<CampaignStatisticResponse>> getCampaignStatistic(@Valid @RequestBody CampaignStatisticRequest request) {
         Page<CampaignStatisticResponse> responses = campaignService.getCampaignStatistic(request);
         return ResponseEntity.ok(responses);
     }
