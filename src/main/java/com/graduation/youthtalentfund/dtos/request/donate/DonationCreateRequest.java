@@ -1,7 +1,9 @@
 package com.graduation.youthtalentfund.dtos.request.donate;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.URL;
 
@@ -18,7 +20,8 @@ public class DonationCreateRequest {
     @NotEmpty(message = "Số điện thoại không được để trống.")
     private String phoneNumber;
 
-    @NotEmpty(message = "Số tiền không được để trống.")
+    @NotNull(message = "Không được để trống")
+    @Min(value = 2000, message = "Ít nhất 2000")
     private Long amount;
 
     @NotEmpty(message = "returnUrl không được để trống.")
