@@ -2,8 +2,8 @@ package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
+import com.graduation.youthtalentfund.dtos.request.donate.UserDonationStatisticRequest;
+import com.graduation.youthtalentfund.dtos.response.donate.*;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.Donation;
@@ -11,6 +11,8 @@ import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.DonationRepository;
+import com.graduation.youthtalentfund.repositories.Projection.TopDonatorProjection;
+import com.graduation.youthtalentfund.repositories.Projection.TotalDonationStatisticProjection;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.DonationService;
 import com.graduation.youthtalentfund.services.MailService;
@@ -33,6 +35,7 @@ import vn.payos.model.webhooks.WebhookData;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -142,7 +145,7 @@ public class DonationServiceImpl implements DonationService {
             request.setUserCode(customUserDetails.getCode());
         }
 
-        Specification<Donation> donationSpecification = DonationSearchRequest.buildSpecification(request);
+        Specification<Donation> donationSpecification = DonationMapper.toSpecification(request);
         Pageable pageable = Pageable.ofSize(20).withPage(request.getPageNumber());
         Page<Donation> donationPage = donationRepository.findAll(donationSpecification, pageable);
         return donationPage.map(DonationMapper::toResponseData);
@@ -180,5 +183,58 @@ public class DonationServiceImpl implements DonationService {
         String subject = "Quỹ ủng hộ tài năng trẻ";
         mailService.sendMail(email, subject, text);
 
+    }
+
+    @Override
+    public Page<UserDonationStatisticResponse> getUserDonationStatistic(UserDonationStatisticRequest request) {
+        CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
+        // Chỉ admin được tìm kiếm theo userCode, user thường sẽ mặc định về userCode của họ
+        if (!AuthUtil.isAdmin(customUserDetails)) request.setUserCode(customUserDetails.getCode());
+        Pageable pageable = Pageable.ofSize(20).withPage(request.getPageNumber());
+        return donationRepository.getUserDonationStatistic(request.getUserCode(), request.getCampaignCode(), request.getFromDate(), request.getToDate(), pageable)
+                .map(p -> {
+                    UserDonationStatisticResponse r = new UserDonationStatisticResponse();
+                    r.setUserCode(p.getUserCode());
+                    r.setFullName(p.getFullName());
+                    r.setPhoneNumber(p.getPhoneNumber());
+                    r.setDonationCount(p.getDonationCount());
+                    r.setCampaignCount(p.getCampaignCount());
+                    r.setTotalDonated(p.getTotalDonated());
+                    return r;
+                });
+    }
+
+    @Override
+    public TotalDonationStatisticResponse getTotalDonationStatistic(LocalDateTime start, LocalDateTime end) {
+         TotalDonationStatisticProjection projection = donationRepository.getTotalDonationStatistic(start , end);
+         TotalDonationStatisticResponse response = new TotalDonationStatisticResponse();
+         response.setTotalDonation(projection.getTotalDonation());
+         response.setGuestDonation(projection.getGuestDonation());
+         response.setTotalReceived(projection.getTotalReceived());
+         return response;
+    }
+
+    @Override
+    public Page<TopDonatorResponse> getTopDonatorPublic() {
+        Page<TopDonatorProjection> projections = donationRepository.findTopDonators(LocalDateTime.MIN, LocalDateTime.now(), Pageable.ofSize(10));
+        return projections.map(p -> {
+            TopDonatorResponse r = new TopDonatorResponse();
+            r.setFullName(p.getFullName());
+//            r.setPhoneNumber(p.getPhoneNumber()); No phoneNumber
+            r.setAmount(p.getAmount());
+            return r;
+        });
+    }
+
+    @Override
+    public Page<TopDonatorResponse> getTopDonatorStatistic(LocalDateTime start, LocalDateTime end, Integer page) {
+        Page<TopDonatorProjection> projections = donationRepository.findTopDonators(LocalDateTime.MIN, LocalDateTime.now(), Pageable.ofSize(20).withPage(page));
+        return projections.map(p -> {
+            TopDonatorResponse r = new TopDonatorResponse();
+            r.setFullName(p.getFullName());
+            r.setPhoneNumber(p.getPhoneNumber());
+            r.setAmount(p.getAmount());
+            return r;
+        });
     }
 }
