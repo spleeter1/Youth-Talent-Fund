@@ -2,12 +2,12 @@ package com.graduation.youthtalentfund.services;
 
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationCreateResponse;
-import com.graduation.youthtalentfund.dtos.response.donate.DonationDataResponse;
-import com.graduation.youthtalentfund.entities.Campaign;
-import com.graduation.youthtalentfund.enums.ProofReportType;
+import com.graduation.youthtalentfund.dtos.request.donate.UserDonationStatisticRequest;
+import com.graduation.youthtalentfund.dtos.response.donate.*;
 import org.springframework.data.domain.Page;
 import vn.payos.model.webhooks.Webhook;
+
+import java.time.LocalDateTime;
 
 public interface DonationService {
     /**
@@ -32,4 +32,14 @@ public interface DonationService {
     Page<DonationDataResponse> searchDonation(DonationSearchRequest request);
 
     DonationDataResponse getDonation(String donationCode);
+
+    Page<UserDonationStatisticResponse> getUserDonationStatistic(UserDonationStatisticRequest request);
+
+    Page<TopDonatorResponse> getTopDonatorPublic();
+
+    Page<TopDonatorResponse> getTopDonatorStatistic(LocalDateTime start, LocalDateTime end, Integer page);
+
+    TotalDonationStatisticResponse getTotalDonationStatistic(LocalDateTime start, LocalDateTime end);
+
+
 }

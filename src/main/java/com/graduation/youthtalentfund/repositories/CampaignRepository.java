@@ -1,9 +1,12 @@
 package com.graduation.youthtalentfund.repositories;
 
+import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignCountProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +14,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,4 +110,57 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     @Query("SELECT c FROM Campaign c WHERE c.status NOT IN (:excludedStatuses)")
     List<Campaign> findAllActiveCampaigns(@Param("excludedStatuses") List<CampaignStatus> excludedStatuses);
+
+    @Query(
+            value = """
+            SELECT
+                c.code AS campaignCode,
+                c.title AS title,
+                u.code AS staffCode,
+                COUNT(d.id) AS donationCount,
+                COALESCE(SUM(d.amount), 0) AS totalReceived
+            FROM campaigns c
+            JOIN users u ON u.id = c.staff_id
+            LEFT JOIN donations d ON d.campaign_id = c.id
+                AND (:fromDate IS NULL OR d.created_at >= :fromDate)
+                AND (:toDate IS NULL OR d.created_at <= :toDate)
+            WHERE (:campaignCode IS NULL OR c.code = :campaignCode)
+            GROUP BY c.code, c.title, u.code
+        """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            WHERE (:campaignCode IS NULL OR c.code = :campaignCode)
+        """,
+            nativeQuery = true
+    )
+    Page<CampaignStatisticProjection> getCampaignStatistic(
+            @Param("campaignCode") String campaignCode,
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate,
+            Pageable pageable
+    );
+
+    @Query("""
+                SELECT
+                    COALESCE(SUM(CASE 
+                        WHEN c.status = 'IN_PROGRESS' THEN 1 
+                        ELSE 0 
+                    END), 0) AS activeCampaign,
+            
+                    COALESCE(SUM(CASE 
+                        WHEN c.status = 'COMPLETED' THEN 1 
+                        ELSE 0 
+                    END), 0) AS finishedCampaign,
+            
+                    COUNT(c) AS totalCampaign
+                FROM Campaign c
+                WHERE (:fromDate IS NULL OR c.startDate >= :fromDate)
+                  AND (:toDate IS NULL OR c.startDate <= :toDate)
+            """)
+    CampaignCountProjection getCampaignCount(
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate
+    );
+
 }
