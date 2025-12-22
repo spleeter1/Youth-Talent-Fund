@@ -1,7 +1,9 @@
 package com.graduation.youthtalentfund.repositories;
 
+import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignCountProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticProjection;
@@ -139,5 +141,26 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             Pageable pageable
     );
 
+    @Query("""
+                SELECT
+                    COALESCE(SUM(CASE 
+                        WHEN c.status = 'IN_PROGRESS' THEN 1 
+                        ELSE 0 
+                    END), 0) AS activeCampaign,
+            
+                    COALESCE(SUM(CASE 
+                        WHEN c.status = 'COMPLETED' THEN 1 
+                        ELSE 0 
+                    END), 0) AS finishedCampaign,
+            
+                    COUNT(c) AS totalCampaign
+                FROM Campaign c
+                WHERE (:fromDate IS NULL OR c.startDate >= :fromDate)
+                  AND (:toDate IS NULL OR c.startDate <= :toDate)
+            """)
+    CampaignCountProjection getCampaignCount(
+            @Param("fromDate") LocalDateTime fromDate,
+            @Param("toDate") LocalDateTime toDate
+    );
 
 }

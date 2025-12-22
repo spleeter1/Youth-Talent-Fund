@@ -3,6 +3,7 @@ package com.graduation.youthtalentfund.controllers;
 import com.graduation.youthtalentfund.dtos.request.CampaignStatisticRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
@@ -14,11 +15,13 @@ import com.graduation.youthtalentfund.services.CampaignService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
@@ -84,10 +87,16 @@ public class CampaignController {
         return ResponseEntity.ok(updated);
     }
 
-    @PostMapping("/management/campaign/statistic")
-    public ResponseEntity<Page<CampaignStatisticResponse>> getCampaignStatistic(@Valid @RequestBody CampaignStatisticRequest request) {
-        Page<CampaignStatisticResponse> responses = campaignService.getCampaignStatistic(request);
-        return ResponseEntity.ok(responses);
+    @GetMapping("/public/campaign/total")
+    public ResponseEntity<CampaignCountResponse> getCampaignCount(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime start,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime end) {
+        CampaignCountResponse response = campaignService.getCampaignCount(start, end);
+        return ResponseEntity.ok(response);
     }
 
 }

@@ -3,6 +3,7 @@ package com.graduation.youthtalentfund.services.impl;
 import com.graduation.youthtalentfund.dtos.request.CampaignStatisticRequest;
 import com.graduation.youthtalentfund.dtos.request.CreateCampaignDTO;
 import com.graduation.youthtalentfund.dtos.request.UpdateCampaignDTO;
+import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
@@ -11,6 +12,7 @@ import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
+import com.graduation.youthtalentfund.repositories.Projection.CampaignCountProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignShortProjection;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticProjection;
@@ -350,5 +352,14 @@ public class CampaignServiceImpl implements CampaignService {
             response.setTotalReceived(projection.getTotalReceived());
             return response;
         });
+    }
+
+    public CampaignCountResponse getCampaignCount(LocalDateTime fromDate, LocalDateTime toDate) {
+        CampaignCountProjection projection = campaignRepository.getCampaignCount(fromDate, toDate);
+        CampaignCountResponse response = new CampaignCountResponse();
+        response.setActiveCampaign(projection.getActiveCampaign());
+        response.setTotalCampaign(projection.getTotalCampaign());
+        response.setActiveCampaign(projection.getTotalCampaign());
+        return response;
     }
 }
