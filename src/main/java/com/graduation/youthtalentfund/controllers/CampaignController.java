@@ -7,6 +7,7 @@ import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
 import com.graduation.youthtalentfund.repositories.Projection.CampaignDetailProjection;
@@ -15,9 +16,12 @@ import com.graduation.youthtalentfund.services.CampaignService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -99,4 +103,22 @@ public class CampaignController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/management/campaigns")
+    public ResponseEntity<Page<CampaignShortProjection>> getMyCampaigns(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                campaignService.getMyCampaigns(
+                        userDetails,
+                        status,
+                        category,
+                        keyword,
+                        pageable
+                )
+        );
+    }
 }

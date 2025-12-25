@@ -7,6 +7,7 @@ import com.graduation.youthtalentfund.dtos.response.CampaignCountResponse;
 import com.graduation.youthtalentfund.dtos.response.CampaignDetailDTO;
 import com.graduation.youthtalentfund.dtos.response.CampaignStatisticResponse;
 import com.graduation.youthtalentfund.entities.Campaign;
+import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.exceptions.BadRequestException;
@@ -59,6 +60,23 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public Page<CampaignShortProjection> searchCampaigns(String status, String category, String keyword, int page, int size) {
         return campaignRepository.findAllCampaignsShort(status, category, keyword, PageRequest.of(page, size));
+    }
+
+    @Override
+    public Page<CampaignShortProjection> getMyCampaigns(
+            CustomUserDetails userDetails,
+            String status,
+            String category,
+            String keyword,
+            Pageable pageable
+    ) {
+        return campaignRepository.findManagedCampaignsShort(
+                userDetails.getId(),
+                status,
+                category,
+                keyword,
+                pageable
+        );
     }
 
     @Override
@@ -179,8 +197,7 @@ public class CampaignServiceImpl implements CampaignService {
             if (updateCampaignDTO.getStartDate() != null &&
                     updateCampaignDTO.getStartDate().isBefore(LocalDateTime.now())) {
                 throw new BadRequestException("StartDate không được nhỏ hơn thời điểm hiện tại.");
-            }
-            else  campaign.setStartDate(updateCampaignDTO.getStartDate());
+            } else campaign.setStartDate(updateCampaignDTO.getStartDate());
 
             if (updateCampaignDTO.getEndDate() != null) {
                 campaign.setEndDate(updateCampaignDTO.getEndDate());

@@ -77,6 +77,50 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             Pageable pageable
     );
 
+    @Query(value = """
+            SELECT
+                c.category AS category,
+                DATEDIFF(c.end_date, NOW()) AS durationsDays,
+                c.title AS title,
+                c.description AS description,
+                c.current_amount AS currentAmount,
+                c.target_amount AS targetAmount,
+                c.start_date AS startDate,
+                c.end_date AS endDate,
+                c.cover_image_path AS coverImagePath,
+                c.code AS code
+            FROM campaigns c
+            WHERE c.staff_id = :managerId
+              AND (:status IS NULL OR c.status = :status)
+              AND (:category IS NULL OR c.category = :category)
+              AND (
+                    :keyword IS NULL
+                    OR c.title LIKE CONCAT('%', :keyword, '%')
+                    OR c.description LIKE CONCAT('%', :keyword, '%')
+              )
+            ORDER BY DATEDIFF(c.end_date, NOW()) ASC
+            """,
+            countQuery = """
+            SELECT COUNT(*)
+            FROM campaigns c
+            WHERE c.staff_id = :managerId
+              AND (:status IS NULL OR c.status = :status)
+              AND (:category IS NULL OR c.category = :category)
+              AND (
+                    :keyword IS NULL
+                    OR c.title LIKE CONCAT('%', :keyword, '%')
+                    OR c.description LIKE CONCAT('%', :keyword, '%')
+              )
+            """,
+            nativeQuery = true)
+    Page<CampaignShortProjection> findManagedCampaignsShort(
+            @Param("managerId") Long managerId,
+            @Param("status") String status,
+            @Param("category") String category,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
     // Get Campaign detail
     @Query(value = """
             SELECT
