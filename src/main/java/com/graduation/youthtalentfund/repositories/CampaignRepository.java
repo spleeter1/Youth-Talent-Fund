@@ -39,6 +39,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     @Query(value = """
             SELECT
                 c.category AS category,
+                c.status AS status,
                 DATEDIFF(c.end_date, NOW()) AS durationsDays,
                 c.title AS title,
                 c.description AS description,
@@ -89,6 +90,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
             	c.location AS location,
             	c.start_date AS startDate,
             	c.end_date AS endDate,
+            	c.category AS category,
             	c.current_amount AS currentAmount,
             	c.target_amount AS targetAmount,
             	c.status AS status,
