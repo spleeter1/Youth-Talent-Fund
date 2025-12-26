@@ -9,6 +9,4 @@ public class DonationCreateResponse {
     private String qrCode;
     @NotEmpty
     private String checkoutUrl;
-    @NotEmpty
-    private String signature;
 }
