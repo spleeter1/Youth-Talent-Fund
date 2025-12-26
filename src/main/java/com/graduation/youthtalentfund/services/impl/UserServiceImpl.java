@@ -268,6 +268,7 @@ public class UserServiceImpl implements UserService {
                 .code(user.getCode())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
                 .avatarPaths(avatarPaths)
                 .address(user.getAddress())
                 .bio(user.getBio())
