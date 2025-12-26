@@ -6,11 +6,13 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import javax.annotation.Nullable;
+
 public class AuthUtil {
-    public static CustomUserDetails getCurrentUser() {
+    public static @Nullable CustomUserDetails getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
-            throw new AccessDeniedException("Must be logged in.");
+            return null;
         }
 
         if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {

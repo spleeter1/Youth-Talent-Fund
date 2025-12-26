@@ -27,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import vn.payos.exception.WebhookException;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
@@ -63,8 +64,10 @@ public class DonationServiceImpl implements DonationService {
         donation.setCampaign(campaign);
 
         CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
-        Optional<User> userOptional = userRepository.findByCode(customUserDetails.getCode());
-        userOptional.ifPresent(donation::setUser);
+        if (customUserDetails != null) {
+            Optional<User> userOptional = userRepository.findByCode(customUserDetails.getCode());
+            userOptional.ifPresent(donation::setUser);
+        }
 
         donation.setCode(CodeGenerator.generateDonationCode());
         donation.setAmount(BigDecimal.valueOf(donationCreateRequest.getAmount()));
@@ -106,10 +109,10 @@ public class DonationServiceImpl implements DonationService {
 
         DonationCreateResponse donationCreateResponse = new DonationCreateResponse();
         String qrCode = payOsResponse.getQrCode();
-        String checkoutUrl = payOsResponse.getQrCode();
+        String checkoutUrl = payOsResponse.getCheckoutUrl();
         donationCreateResponse.setQrCode(qrCode);
         donationCreateResponse.setCheckoutUrl(checkoutUrl);
-        donationCreateResponse.setSignature(payOsService.createPaymentRequestSignature(Map.of("qrCode", qrCode, "checkoutUrl", checkoutUrl)));
+
         return donationCreateResponse;
     }
 
@@ -117,6 +120,7 @@ public class DonationServiceImpl implements DonationService {
     public void handleWebhookData(Webhook hookData) {
         WebhookData webhookData = payOsService.getPayOS().webhooks().verify(hookData);
         String code = webhookData.getCode();
+        System.out.println(webhookData);
         if (code.equalsIgnoreCase("00")) {
             String transactionCode = String.valueOf(webhookData.getOrderCode());
 
@@ -140,7 +144,7 @@ public class DonationServiceImpl implements DonationService {
     public Page<DonationDataResponse> searchDonation(DonationSearchRequest request) {
 
         CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
-        if (!AuthUtil.isAdmin(customUserDetails)) {
+        if (customUserDetails != null && !AuthUtil.isAdmin(customUserDetails)) {
             //Nếu không phải admin thì request mặc định dùng userCode. Ngược lại, admin có thể dùng bất kì userCode nào để lọc theo user
             request.setUserCode(customUserDetails.getCode());
         }
@@ -159,7 +163,7 @@ public class DonationServiceImpl implements DonationService {
 
         CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
         // Chỉ admin và chủ của donation đó được xem data
-        if (!donation.getUser().getCode().equals(customUserDetails.getCode()) && !AuthUtil.isAdmin(customUserDetails)) {
+        if (customUserDetails != null && !donation.getUser().getCode().equals(customUserDetails.getCode()) && !AuthUtil.isAdmin(customUserDetails)) {
             throw new AccessDeniedException("Access denied");
         }
 
@@ -189,7 +193,7 @@ public class DonationServiceImpl implements DonationService {
     public Page<UserDonationStatisticResponse> getUserDonationStatistic(UserDonationStatisticRequest request) {
         CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
         // Chỉ admin được tìm kiếm theo userCode, user thường sẽ mặc định về userCode của họ
-        if (!AuthUtil.isAdmin(customUserDetails)) request.setUserCode(customUserDetails.getCode());
+        if (customUserDetails != null && !AuthUtil.isAdmin(customUserDetails)) request.setUserCode(customUserDetails.getCode());
         Pageable pageable = Pageable.ofSize(20).withPage(request.getPageNumber());
         return donationRepository.getUserDonationStatistic(request.getUserCode(), request.getCampaignCode(), request.getFromDate(), request.getToDate(), pageable)
                 .map(p -> {

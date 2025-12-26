@@ -26,11 +26,16 @@ public class DonationController {
     }
 
     @PostMapping("/hook")
-    public ResponseEntity<?> handleWebhookData(@Valid @RequestBody Webhook hookData) {
+    public ResponseEntity<?> handleWebhookData(@RequestBody Webhook hookData) {
 
         donationService.handleWebhookData(hookData);
 
-        return ResponseEntity.status(200).body(hookData); // PayOS want 200 return
+        return ResponseEntity.ok().build(); // PayOS want 200 return
+    }
+
+    @GetMapping("/hook")
+    public ResponseEntity<?> getHandleHookData() {
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/top-donate")
