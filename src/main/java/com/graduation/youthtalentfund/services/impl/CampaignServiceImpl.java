@@ -20,6 +20,7 @@ import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticP
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.CampaignService;
 import com.graduation.youthtalentfund.services.FileStorageService;
+import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.FileUtils;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -278,6 +281,21 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign updated = campaignRepository.save(campaign);
 
         return mapCampaignToDTO(updated);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<CampaignShortProjection> getCampaignsByStaffId(
+            String staffCode,
+            String status,
+            String category,
+            String keyword,
+            Pageable pageable) {
+
+        User staff = userRepository.findByCode(staffCode).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng."));
+
+        return campaignRepository.findManagedCampaignsShort(staff.getId(), status, category, keyword, pageable);
     }
 
     @Override

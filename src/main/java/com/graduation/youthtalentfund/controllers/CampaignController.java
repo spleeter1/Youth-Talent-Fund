@@ -121,4 +121,23 @@ public class CampaignController {
                 )
         );
     }
+
+    @GetMapping("/management/admin/staff/{staffCode}/campaigns")
+    public ResponseEntity<Page<CampaignShortProjection>> getCampaignByStaffId(
+            @PathVariable(required = false) String staffCode,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                campaignService.getCampaignsByStaffId(
+                        staffCode,
+                        status,
+                        category,
+                        keyword,
+                        pageable
+                )
+        );
+    }
 }

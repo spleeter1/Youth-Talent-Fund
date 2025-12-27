@@ -40,4 +40,11 @@ public interface CampaignService {
             String category,
             String keyword,
             Pageable pageable);
+
+    Page<CampaignShortProjection> getCampaignsByStaffId(
+            String staffCode,
+            String status,
+            String category,
+            String keyword,
+            Pageable pageable);
 }

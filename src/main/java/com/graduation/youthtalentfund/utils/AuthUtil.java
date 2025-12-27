@@ -23,7 +23,7 @@ public class AuthUtil {
 
     public static boolean isAdmin(CustomUserDetails customUserDetails) {
         return customUserDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> (a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN")));
     }
 
     public static boolean isAdminOrStaff(CustomUserDetails customUserDetails) {
