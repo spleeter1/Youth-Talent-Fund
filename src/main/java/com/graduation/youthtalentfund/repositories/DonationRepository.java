@@ -1,6 +1,7 @@
 package com.graduation.youthtalentfund.repositories;
 
 import com.graduation.youthtalentfund.entities.Donation;
+import com.graduation.youthtalentfund.repositories.Projection.DonationDataPublicProjection;
 import com.graduation.youthtalentfund.repositories.Projection.TopDonatorProjection;
 import com.graduation.youthtalentfund.repositories.Projection.TotalDonationStatisticProjection;
 import com.graduation.youthtalentfund.repositories.Projection.UserDonationStatisticProjection;
@@ -90,5 +91,37 @@ public interface DonationRepository extends JpaRepository<Donation, Long>, JpaSp
             @Param("toDate") LocalDateTime toDate,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT
+            CASE
+                WHEN d.isAnonymous = true THEN NULL
+                ELSE d.donorName
+            END AS donorName,
+            d.amount AS amount,
+            d.createdAt AS time
+        FROM Donation d
+        WHERE d.campaign.code = :campaignCode
+          AND d.paymentStatus = 'PAID'
+        ORDER BY d.updatedAt DESC
+        """)
+    Page<DonationDataPublicProjection> findDonationPublicListByCampaignCode(
+            @Param("campaignCode") String campaignCode,
+            Pageable pageable
+    );
+
+    @Query("""
+                SELECT
+                    CASE
+                        WHEN d.isAnonymous = true THEN NULL
+                        ELSE d.donorName
+                    END AS donorName,
+                    d.amount AS amount,
+                    d.createdAt AS time
+                FROM Donation d
+                WHERE d.paymentStatus = 'PAID'
+                ORDER BY d.updatedAt DESC
+            """)
+    Page<DonationDataPublicProjection> getRecentPublicDonationList(Pageable pageable);
 
 }

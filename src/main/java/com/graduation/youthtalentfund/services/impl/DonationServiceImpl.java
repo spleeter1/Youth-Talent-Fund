@@ -1,5 +1,7 @@
 package com.graduation.youthtalentfund.services.impl;
 
+import com.graduation.youthtalentfund.dtos.DonationWebSocketDataMessage;
+import com.graduation.youthtalentfund.dtos.PaymentWebSocketStatusMessage;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.UserDonationStatisticRequest;
@@ -11,12 +13,14 @@ import com.graduation.youthtalentfund.entities.User;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.DonationRepository;
+import com.graduation.youthtalentfund.repositories.Projection.DonationDataPublicProjection;
 import com.graduation.youthtalentfund.repositories.Projection.TopDonatorProjection;
 import com.graduation.youthtalentfund.repositories.Projection.TotalDonationStatisticProjection;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.DonationService;
 import com.graduation.youthtalentfund.services.MailService;
 import com.graduation.youthtalentfund.services.PayOsService;
+import com.graduation.youthtalentfund.session.WebSocketTokenStore;
 import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.mapper.DonationMapper;
@@ -25,9 +29,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import vn.payos.exception.WebhookException;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
@@ -40,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 
 @Service
@@ -52,6 +57,8 @@ public class DonationServiceImpl implements DonationService {
 
     private final PayOsService payOsService;
     private final MailService mailService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final WebSocketTokenStore wsTokenStore;
     private final Validator validator;
 
     public DonationCreateResponse createDonation(DonationCreateRequest donationCreateRequest) {
@@ -68,8 +75,8 @@ public class DonationServiceImpl implements DonationService {
             Optional<User> userOptional = userRepository.findByCode(customUserDetails.getCode());
             userOptional.ifPresent(donation::setUser);
         }
-
-        donation.setCode(CodeGenerator.generateDonationCode());
+        String donationCode = CodeGenerator.generateDonationCode();
+        donation.setCode(donationCode);
         donation.setAmount(BigDecimal.valueOf(donationCreateRequest.getAmount()));
         donation.setDonorName(donationCreateRequest.getName());
         donation.setDonorEmail(donationCreateRequest.getEmail());
@@ -107,11 +114,16 @@ public class DonationServiceImpl implements DonationService {
             this.sendMail(donationCreateRequest.getEmail(), donationCreateRequest.getAmount(), donation.getTransactionCode());
         }
 
+        String wsToken = UUID.randomUUID().toString();
+
+        wsTokenStore.put(wsToken, donationCode);
+
         DonationCreateResponse donationCreateResponse = new DonationCreateResponse();
         String qrCode = payOsResponse.getQrCode();
         String checkoutUrl = payOsResponse.getCheckoutUrl();
         donationCreateResponse.setQrCode(qrCode);
         donationCreateResponse.setCheckoutUrl(checkoutUrl);
+        donationCreateResponse.setWsToken(wsToken);
 
         return donationCreateResponse;
     }
@@ -124,7 +136,28 @@ public class DonationServiceImpl implements DonationService {
         if (code.equalsIgnoreCase("00")) {
             String transactionCode = String.valueOf(webhookData.getOrderCode());
 
-            finishDonation(transactionCode);
+            Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode);
+            if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", transactionCode);
+            Donation donation = donationOptional.get();
+
+            donation.setPaymentStatus(PaymentLinkStatus.PAID.getValue());
+
+            donationRepository.save(donation);
+
+            notifyUserDonationSuccess(donation.getCode(), donation.getTransactionCode());
+
+            DonationWebSocketDataMessage message = new DonationWebSocketDataMessage();
+            message.setTime(donation.getUpdatedAt());
+            message.setCampaignCode(donation.getCampaign().getCode());
+            if (donation.isAnonymous()) {
+                message.setDonorName(null);
+            } else {
+                message.setDonorName(donation.getDonorName());
+            }
+            message.setMessage(donation.getMessage());
+            message.setAmount(donation.getAmount());
+
+            broadcastDonation(message);
         }
     }
 
@@ -157,7 +190,7 @@ public class DonationServiceImpl implements DonationService {
 
     @Override
     public DonationDataResponse getDonation(String donationCode) {
-        Optional<Donation> donationOptional = donationRepository.findByTransactionCode(donationCode);
+        Optional<Donation> donationOptional = donationRepository.findByCode(donationCode);
         if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", donationCode);
         Donation donation = donationOptional.get();
 
@@ -170,14 +203,41 @@ public class DonationServiceImpl implements DonationService {
         return DonationMapper.toResponseData(donation);
     }
 
-    private void finishDonation(String transactionCode) {
-        Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode);
-        if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", transactionCode);
+    @Override
+    public Page<DonationDataPublicResponse> getDonationListPublicOfCampaign(String campaignCode, Integer page) {
+        Page<DonationDataPublicProjection> projections = donationRepository.findDonationPublicListByCampaignCode(campaignCode, Pageable.ofSize(20).withPage(page));
+        return projections.map(p -> {
+            DonationDataPublicResponse response = new DonationDataPublicResponse();
+            response.setTime(p.getTime());
+            response.setAmount(p.getAmount());
+            response.setDonorName(p.getDonorName());
+            return response;
+        });
+    }
+
+    @Override
+    public Page<DonationDataPublicResponse> getRecentPublicDonationList() {
+        Page<DonationDataPublicProjection> projections = donationRepository.getRecentPublicDonationList(Pageable.ofSize(10).withPage(0));
+        return projections.map(p ->  {
+            DonationDataPublicResponse response = new DonationDataPublicResponse();
+            response.setTime(p.getTime());
+            response.setAmount(p.getAmount());
+            response.setDonorName(p.getDonorName());
+            return response;
+        });
+    }
+
+    @Override
+    public DonationStatusResponse getDonationStatus(Long transactionCode) {
+        Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode.toString());
+        if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "transaction_code", transactionCode);
         Donation donation = donationOptional.get();
 
-        donation.setPaymentStatus(PaymentLinkStatus.PAID.getValue());
-
-        donationRepository.save(donation);
+        DonationStatusResponse response = new DonationStatusResponse();
+        response.setStatus(donation.getPaymentStatus());
+        response.setCode(donation.getCode());
+        response.setTransactionCode(donation.getTransactionCode());
+        return response;
     }
 
     private void sendMail(String email, Long amount, String transactionCode) {
@@ -240,5 +300,29 @@ public class DonationServiceImpl implements DonationService {
             r.setAmount(p.getAmount());
             return r;
         });
+    }
+
+    // WebSocket
+    @Override
+    public void broadcastDonation(DonationWebSocketDataMessage message) {
+        messagingTemplate.convertAndSend(
+                "/topic/donations/" + message.getCampaignCode(),
+                message
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/donations",
+                message
+        );
+    }
+
+    @Override
+    public void notifyUserDonationSuccess(String donationCode, String orderCode) {
+
+        messagingTemplate.convertAndSendToUser(
+                donationCode, // user identifier
+                "/queue/payment-status",
+                new PaymentWebSocketStatusMessage("SUCCESS", orderCode)
+        );
     }
 }
