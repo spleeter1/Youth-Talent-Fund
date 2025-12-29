@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.services;
 
+import com.graduation.youthtalentfund.dtos.DonationWebSocketDataMessage;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationCreateRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.DonationSearchRequest;
 import com.graduation.youthtalentfund.dtos.request.donate.UserDonationStatisticRequest;
@@ -41,5 +42,21 @@ public interface DonationService {
 
     TotalDonationStatisticResponse getTotalDonationStatistic(LocalDateTime start, LocalDateTime end);
 
+    DonationStatusResponse getDonationStatus(Long transactionCode);
 
+    Page<DonationDataPublicResponse> getDonationListPublicOfCampaign(String campaignCode, Integer page);
+
+    Page<DonationDataPublicResponse> getRecentPublicDonationList();
+    // WebSocket
+    /**
+     * WebSocket để post thông báo có người thanh toán thành công
+     * @param message Message thông báo
+     */
+    void broadcastDonation(DonationWebSocketDataMessage message);
+
+    /**
+     * user/queue/payment-status <br>
+     * WebSocket dùng để điều hướng trình duyệt người dùng sau khi thanh toán QR thành công, yêu cầu wsToken khi connect
+     */
+    void notifyUserDonationSuccess(String donationCode, String orderCode);
 }
