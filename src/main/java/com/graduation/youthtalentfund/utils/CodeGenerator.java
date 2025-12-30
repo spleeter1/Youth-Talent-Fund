@@ -1,8 +1,10 @@
 package com.graduation.youthtalentfund.utils;
 
+import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
+import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
@@ -11,6 +13,11 @@ import java.util.UUID;
 public class CodeGenerator {
     private static final String ALPHANUMERIC_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
+    private final CampaignRepository campaignRepository;
+
+    public CodeGenerator(CampaignRepository campaignRepository) {
+        this.campaignRepository = campaignRepository;
+    }
 
     /**
      * Phương thức nội bộ để tạo một chuỗi ngẫu nhiên với độ dài cho trước.
@@ -59,12 +66,34 @@ public class CodeGenerator {
 
     /**
      * Tạo mã Báo cáo (Proof Report Code).
-     * Quy tắc: REP-[8 ký tự đầu của UUID]
-     * Ví dụ: REP-A1B2C3D4
+     * Quy tắc: REP-[YYYYMMDD]-[6 ký tự ngẫu nhiên]
+     * Ví dụ: REP-20241028-P9W3R7
      * @return Mã báo cáo mới.
      */
     public static String generateReportCode() {
-        String uuidPart = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        return "REP-" + uuidPart;
+        String datePart = new SimpleDateFormat("yyyyMMdd").format(new Date());
+        return "REP-" + datePart + "-" + generateRandomString(6);
+    }
+
+    public String generateUniqueSlug(String title) {
+        String baseSlug = toSlug(title);
+        String slug = baseSlug;
+        int count = 1;
+        while (campaignRepository.existsBySlug(slug)) {
+            slug = baseSlug + "-" + count;
+            count++;
+        }
+        return slug;
+    }
+
+    private static String toSlug(String input) {
+        String slug = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\s-]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-");
+
+        return slug.replaceAll("^-|-$", "");
     }
 }
