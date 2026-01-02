@@ -59,7 +59,7 @@ public class User extends BaseEntity {
             mappedBy = "user",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
-            fetch = FetchType.EAGER
+            fetch = FetchType.LAZY // Dùng LAZY để tối ưu, chỉ tải các role khi thực sự cần
     )
     private Set<UserRole> userRoles = new HashSet<>();
 
