@@ -27,15 +27,6 @@ public class UserController {
         return ResponseEntity.ok(updatedUser);
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<UserInfoDTO> getMyProfile(
-            Authentication authentication) {
-
-        String userEmail = authentication.getName();
-        UserInfoDTO userInfo = userService.getUserInfo(userEmail);
-        return ResponseEntity.ok(userInfo);
-    }
-
     @PutMapping("/me/avatar")
     public ResponseEntity<UserInfoDTO> updateMyAvatar(
             @RequestParam("avatar") MultipartFile file,

@@ -14,15 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,8 +33,6 @@ public class MinioStorageServiceImpl implements FileStorageService {
 
     public static final String THUMBNAIL_PREFIX = "thumb_";
 
-    private final S3Presigner s3Presigner;
-
     @Override
     public Map<String, String> storeFile(MultipartFile file, String objectName) {
         try {
@@ -52,28 +45,28 @@ public class MinioStorageServiceImpl implements FileStorageService {
                             .contentType(file.getContentType())
                             .build()
             );
+
+            // Tạo và upload thumbnail
+            String thumbnailObjectName = THUMBNAIL_PREFIX + objectName;
+            try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                Thumbnails.of(file.getInputStream()).size(200, 200).toOutputStream(os);
+                try(InputStream thumbnailInputStream = new ByteArrayInputStream(os.toByteArray())) {
+                    minioClient.putObject(
+                            PutObjectArgs.builder()
+                                    .bucket(bucketName)
+                                    .object(thumbnailObjectName)
+                                    .stream(thumbnailInputStream, os.size(), -1)
+                                    .contentType(file.getContentType())
+                                    .build()
+                    );
+                }
+            }
+
             Map<String, String> storedObjects = new HashMap<>();
             storedObjects.put("original", objectName);
-            // Tạo và upload thumbnail nếu là ảnh
-            if (file.getContentType() != null && file.getContentType().startsWith("image/")) {
-                String thumbnailObjectName = THUMBNAIL_PREFIX + objectName;
-                try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                    Thumbnails.of(file.getInputStream()).size(200, 200).toOutputStream(os);
-                    try (InputStream thumbnailInputStream = new ByteArrayInputStream(os.toByteArray())) {
-                        minioClient.putObject(
-                                PutObjectArgs.builder()
-                                        .bucket(bucketName)
-                                        .object(thumbnailObjectName)
-                                        .stream(thumbnailInputStream, os.size(), -1)
-                                        .contentType(file.getContentType())
-                                        .build()
-                        );
-                    }
-                }
-
-                storedObjects.put("thumbnail", thumbnailObjectName);
-            }
+            storedObjects.put("thumbnail", thumbnailObjectName);
             return storedObjects;
+
         } catch (Exception e) {
             logger.error("Lỗi khi upload file lên MinIO", e);
             throw new FileUploadException(MessageConstants.FILE_UPLOAD_ERROR);
@@ -87,43 +80,11 @@ public class MinioStorageServiceImpl implements FileStorageService {
             minioClient.removeObject(
                     RemoveObjectArgs.builder().bucket(bucketName).object(baseObjectName).build()
             );
-
-            try {
-                minioClient.statObject(
-                        io.minio.StatObjectArgs.builder()
-                                .bucket(bucketName)
-                                .object(THUMBNAIL_PREFIX + baseObjectName)
-                                .build());
-
-                minioClient.removeObject(
-                        RemoveObjectArgs.builder().bucket(bucketName).object(THUMBNAIL_PREFIX + baseObjectName).build()
-                );
-            } catch (Exception ignore) {
-
-            }
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder().bucket(bucketName).object(THUMBNAIL_PREFIX + baseObjectName).build()
+            );
         } catch (Exception e) {
             logger.error("Lỗi khi xóa object {} từ MinIO", baseObjectName, e);
         }
-    }
-
-
-    @Override
-    public String generatePresignedDownloadUrl(String objectKey, Duration duration) {
-
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(objectKey)
-                .build();
-
-        GetObjectPresignRequest presignRequest =
-                GetObjectPresignRequest.builder()
-                        .signatureDuration(duration)
-                        .getObjectRequest(getObjectRequest)
-                        .build();
-
-        PresignedGetObjectRequest presignedRequest =
-                s3Presigner.presignGetObject(presignRequest);
-
-        return presignedRequest.url().toString();
     }
 }

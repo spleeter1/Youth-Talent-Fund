@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 
 public interface CampaignShortProjection {
     String getCategory();
-    String getStatus();
     String getDurationsDays();
     String getTitle();
     String getDescription();

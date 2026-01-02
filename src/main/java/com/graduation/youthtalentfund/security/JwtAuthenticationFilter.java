@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,6 +18,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -39,21 +42,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        if (!jwtTokenProvider.validateToken(jwt)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String username = jwtTokenProvider.getUsernameFromJWT(jwt);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(username);
-            if (jwtTokenProvider.validateToken(jwt)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
+
+            List<String> rolesFromToken = jwtTokenProvider.extractRoles(jwt);
+
+            UsernamePasswordAuthenticationToken authToken;
+
+            if (rolesFromToken != null && !rolesFromToken.isEmpty()) {
+                var authorities = rolesFromToken.stream()
+                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                        .collect(Collectors.toList());
+
+                authToken = new UsernamePasswordAuthenticationToken(
+                        username,
                         null,
-                        userDetails.getAuthorities()
+                        authorities
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
-        filterChain.doFilter(request, response);
+            filterChain.doFilter(request, response);
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {

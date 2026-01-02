@@ -39,13 +39,13 @@ public class DataInitializer implements CommandLineRunner {
             // --- TẠO ROLES ---
             System.out.println("Initializing roles...");
             Role adminRole = new Role();
-            adminRole.setName("ADMIN");
+            adminRole.setName("ROLE_ADMIN");
 
             Role staffRole = new Role();
-            staffRole.setName("STAFF");
+            staffRole.setName("ROLE_STAFF");
 
             Role userRole = new Role();
-            userRole.setName("USER");
+            userRole.setName("ROLE_USER");
 
             roleRepository.saveAll(List.of(adminRole, staffRole, userRole));
             System.out.println("Roles initialized.");
@@ -55,8 +55,8 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByEmail(adminEmail)) {
             System.out.println("Creating default admin account...");
 
-            Role adminRoleEntity = roleRepository.findByName("ADMIN")
-                    .orElseThrow(() -> new RuntimeException("FATAL: ADMIN not found after initialization!"));
+            Role adminRoleEntity = roleRepository.findByName("ROLE_ADMIN")
+                    .orElseThrow(() -> new RuntimeException("FATAL: ROLE_ADMIN not found after initialization!"));
 
             User adminUser = new User();
             adminUser.setEmail(adminEmail);

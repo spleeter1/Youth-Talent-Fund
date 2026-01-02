@@ -1,16 +1,13 @@
 package com.graduation.youthtalentfund.entities;
 
 import jakarta.persistence.*;
-import lombok.*;
-
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 
 @Getter
 @Setter
 @Entity
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
 @Table(name = "donations", indexes = {
         @Index(name = "idx_donation_code", columnList = "code", unique = true),
         @Index(name = "idx_donation_transaction_code", columnList = "transactionCode", unique = true)
@@ -29,19 +26,16 @@ public class Donation extends BaseEntity {
     @Column
     private String donorEmail;
 
-    @Column
-    private String donorPhoneNumber;
-
     @Lob
     private String message;
 
     @Column(nullable = false)
-    private boolean isAnonymous;
+    private boolean isAnonymous = false;
 
     @Column(length = 50)
     private String transactionCode;
 
-    @Column(length = 50)
+    @Column(length = 50, nullable = false)
     private String paymentStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
