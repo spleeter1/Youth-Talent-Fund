@@ -23,11 +23,13 @@ import com.graduation.youthtalentfund.services.FileStorageService;
 import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.FileUtils;
+import com.graduation.youthtalentfund.utils.ProjectionS3Util;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.expression.spel.ast.Projection;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,6 +52,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final CodeGenerator codeGenerator;
+    private final ProjectionS3Util projectionS3Util;
 
     @Value("${cdn.base-url}")
     private String cdnBaseUrl;
@@ -62,7 +65,9 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public Page<CampaignShortProjection> searchCampaigns(String status, String category, String keyword, int page, int size) {
-        return campaignRepository.findAllCampaignsShort(status, category, keyword, PageRequest.of(page, size));
+        Page<CampaignShortProjection> resultPage =
+                campaignRepository.findAllCampaignsShort(status, category, keyword, PageRequest.of(page, size));
+        return resultPage.map(campaign -> projectionS3Util.addS3(campaign, CampaignShortProjection.class, "getCoverImagePath"));
     }
 
     @Override
@@ -73,12 +78,16 @@ public class CampaignServiceImpl implements CampaignService {
             String keyword,
             Pageable pageable
     ) {
-        return campaignRepository.findManagedCampaignsShort(
+        Page<CampaignShortProjection> resultPage = campaignRepository.findManagedCampaignsShort(
                 userDetails.getId(),
                 status,
                 category,
                 keyword,
                 pageable
+        );
+
+        return resultPage.map(campaign ->
+                projectionS3Util.addS3(campaign, CampaignShortProjection.class, "getCoverImagePath")
         );
     }
 
