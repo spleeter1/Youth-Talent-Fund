@@ -83,6 +83,7 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
                 c.category AS category,
                 DATEDIFF(c.end_date, NOW()) AS durationsDays,
                 c.title AS title,
+                c.status AS status,
                 c.description AS description,
                 c.current_amount AS currentAmount,
                 c.target_amount AS targetAmount,
