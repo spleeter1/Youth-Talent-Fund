@@ -24,6 +24,8 @@ public interface DonationService {
      */
     void cancelDonation(String transactionCode);
 
+    void cancelExpiredDonations();
+
     /**
      * Xử lí data payment từ PayOS (update Status, v.v...)
      * @param hookData data payment từ PayOS
