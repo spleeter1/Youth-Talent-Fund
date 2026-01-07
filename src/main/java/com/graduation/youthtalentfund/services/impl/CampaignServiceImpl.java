@@ -93,7 +93,8 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public CampaignDetailProjection getByCodeOrSlug(String value) {
-        return campaignRepository.findByCodeOrSlug(value).orElseThrow(() -> new ResourceNotFoundException("Campaign Not Found"));
+        CampaignDetailProjection campaign = campaignRepository.findByCodeOrSlug(value).orElseThrow(() -> new ResourceNotFoundException("Campaign Not Found"));
+        return projectionS3Util.addS3(campaign,CampaignDetailProjection.class, "getCoverImagePath");
     }
 
     @Transactional
