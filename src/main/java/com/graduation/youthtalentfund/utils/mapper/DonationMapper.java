@@ -30,7 +30,9 @@ public class DonationMapper {
         dataResponse.setTransactionCode(donation.getTransactionCode());
         dataResponse.setPaymentStatus(donation.getPaymentStatus());
         dataResponse.setCampaignCode(donation.getCampaign().getCode());
-        dataResponse.setUserCode(donation.getUser().getCode());
+        if (donation.getUser() == null) {
+            dataResponse.setUserCode(null);
+        } else dataResponse.setUserCode(donation.getUser().getCode());
         dataResponse.setCreatedAt(donation.getCreatedAt());
         dataResponse.setUpdatedAt(donation.getUpdatedAt());
 

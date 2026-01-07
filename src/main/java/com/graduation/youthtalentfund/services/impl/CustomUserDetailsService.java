@@ -2,8 +2,10 @@ package com.graduation.youthtalentfund.services.impl;
 
 import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.enums.UserStatus;
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -26,6 +28,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                     .orElseThrow(() ->
                             new UsernameNotFoundException("User not found with email or code: " + username)
                     );
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new DisabledException("User is disabled/deleted");
         }
 
         return new CustomUserDetails(user);
