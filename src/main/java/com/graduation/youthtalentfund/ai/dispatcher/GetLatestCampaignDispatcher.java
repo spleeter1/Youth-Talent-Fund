@@ -15,7 +15,7 @@ public class GetLatestCampaignDispatcher implements DataQueryDispatcher {
 
     @Override
     public boolean supports(QueryContext context) {
-        return context.getIntent() == IntentType.GET_LATEST_CAMPAIGN;
+        return context.getIntent() == IntentType.GET_LATEST_CAMPAIGN || context.getIntent() == IntentType.LIST_CAMPAIGNS;
     }
 
     @Override
@@ -34,7 +34,7 @@ public class GetLatestCampaignDispatcher implements DataQueryDispatcher {
 
         return new QueryResult(
                 context.getIntent(),
-                page.getContent().get(0)
+                page.getContent()
         );
     }
 }

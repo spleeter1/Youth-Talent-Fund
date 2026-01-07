@@ -22,6 +22,8 @@ public class ResponseComposerService {
                 KHÔNG được thay đổi số liệu
                 Nhưng cũng trả lời linh hoạt về mặt diễn đạt tí nhé,đừng quá máy móc theo dữ liệu nhưnng vẫn phải đúng format phản hồi" 
                 Domain gốc nếu cần thiết khi muốn đưa đường dẫn cho người dùng này: %s
+                Trình bày đẹp khi cần xuống dòng
+                Có thể đọc thông tin và ghép vs link chuẩn để redirect cho dễ nếu cần thiết. 
                 
                 Intent: %s
                 Dữ liệu:
@@ -32,7 +34,7 @@ public class ResponseComposerService {
                 "Câu trả lời"
                 """.formatted(frontendBaseUrl,
                 result.getIntent(),
-                result.getData()
+                result.getData().toString()
         );
 
         GenerateContentResponse response = client.models.generateContent("gemini-2.5-flash", prompt, null);

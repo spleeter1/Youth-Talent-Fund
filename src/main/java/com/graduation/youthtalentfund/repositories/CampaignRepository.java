@@ -57,7 +57,8 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
                     OR c.title LIKE CONCAT('%', :keyword, '%')
                     OR c.description LIKE CONCAT('%', :keyword, '%')
               )
-            ORDER BY c.created_at DESC
+            ORDER BY c.created_at DESC,
+                    c.start_date DESC
             """,
             countQuery = """
                     SELECT COUNT(*)
@@ -100,7 +101,8 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
                     OR c.title LIKE CONCAT('%', :keyword, '%')
                     OR c.description LIKE CONCAT('%', :keyword, '%')
               )
-            ORDER BY c.created_at DESC
+            ORDER BY c.created_at DESC,
+                    c.start_date DESC
             """,
             countQuery = """
             SELECT COUNT(*)
