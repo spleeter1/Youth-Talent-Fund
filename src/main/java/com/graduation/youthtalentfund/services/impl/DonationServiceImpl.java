@@ -24,12 +24,14 @@ import com.graduation.youthtalentfund.session.WebSocketTokenStore;
 import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.mapper.DonationMapper;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
@@ -41,10 +43,7 @@ import vn.payos.model.webhooks.WebhookData;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -111,7 +110,7 @@ public class DonationServiceImpl implements DonationService {
         donationRepository.save(donation);
 
         if (donationCreateRequest.isSendMail()) {
-            this.sendMail(donationCreateRequest.getEmail(), donationCreateRequest.getAmount(), donation.getTransactionCode());
+            this.sendVerifyMail(donationCreateRequest.getEmail(), donationCreateRequest.getAmount(), donation.getTransactionCode(), campaign.getTitle(), campaign.getCode());
         }
 
         String wsToken = UUID.randomUUID().toString();
@@ -128,6 +127,26 @@ public class DonationServiceImpl implements DonationService {
         return donationCreateResponse;
     }
 
+    @Scheduled(fixedDelay = 3600000) // mỗi 1h
+    @Transactional
+    public void cancelExpiredDonations() {
+
+        LocalDateTime expiredTime = LocalDateTime.now().minusMinutes(60);
+
+        List<Donation> expiredDonations = donationRepository.findExpiredPendingDonations(
+                        PaymentLinkStatus.PENDING.getValue(),
+                        expiredTime
+                );
+
+        for (Donation donation : expiredDonations) {
+            donation.setPaymentStatus(PaymentLinkStatus.CANCELLED.getValue());
+        }
+
+        if (!expiredDonations.isEmpty()) {
+            donationRepository.saveAll(expiredDonations);
+        }
+    }
+
     @Override
     public void handleWebhookData(Webhook hookData) {
         WebhookData webhookData = payOsService.getPayOS().webhooks().verify(hookData);
@@ -139,6 +158,12 @@ public class DonationServiceImpl implements DonationService {
             Optional<Donation> donationOptional = donationRepository.findByTransactionCode(transactionCode);
             if (donationOptional.isEmpty()) throw new ResourceNotFoundException("Donation", "code", transactionCode);
             Donation donation = donationOptional.get();
+
+            Campaign campaign = donation.getCampaign();
+            BigDecimal current = campaign.getCurrentAmount();
+            campaign.setCurrentAmount(current.add(donation.getAmount()));
+
+            campaignRepository.save(campaign);
 
             donation.setPaymentStatus(PaymentLinkStatus.PAID.getValue());
 
@@ -158,6 +183,8 @@ public class DonationServiceImpl implements DonationService {
             message.setAmount(donation.getAmount());
 
             broadcastDonation(message);
+
+            sendThankMail(donation.getDonorEmail(), donation.getAmount().longValueExact(), donation.getTransactionCode(), campaign.getTitle(), campaign.getCode());
         }
     }
 
@@ -240,13 +267,25 @@ public class DonationServiceImpl implements DonationService {
         return response;
     }
 
-    private void sendMail(String email, Long amount, String transactionCode) {
+    private void sendVerifyMail(String email, Long amount, String transactionCode, String campaignName, String campaignCode) {
         String text = "Xác nhận thông tin: \n" +
+                "- Tên chiến dịch: " + campaignName + "\n" +
+                "- Mã chiến dịch" + campaignCode + "\n" +
                 "- Số tiền chuyển: " + amount + "\n" +
                 "- Mã thanh toán: " + transactionCode;
-        String subject = "Quỹ ủng hộ tài năng trẻ";
+        String subject = "Quỹ ủng hộ tài năng trẻ - Xác nhận đóng góp";
         mailService.sendMail(email, subject, text);
 
+    }
+
+    private void sendThankMail(String email, Long amount, String transactionCode, String campaignName, String campaignCode) {
+        String text = "Cảm ơn bạn đã đóng góp! \n" +
+                "- Tên chiến dịch: " + campaignName + "\n" +
+                "- Mã chiến dịch" + campaignCode + "\n" +
+                "- Số tiền chuyển: " + amount + "\n" +
+                "- Mã thanh toán: " + transactionCode;
+        String subject = "Quỹ ủng hộ tài năng trẻ - Chuyển khoản thành công";
+        mailService.sendMail(email, subject, text);
     }
 
     @Override
