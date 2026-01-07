@@ -25,10 +25,8 @@ public class GeminiIntentAnalyzer {
                     LIST_CAMPAIGNS,
                     GET_CAMPAIGN_DETAIL,
                     GET_LATEST_CAMPAIGN,
-                    GET_CAMPAIGN_STATISTIC,
                     GET_CAMPAIGN_DONATION_SUMMARY,
                     GET_TOTAL_DONATION,
-                    GET_CAMPAIGN_PROOF_REPORTS,
                     HOW_TO_DONATE,
                     UNKNOWN
                 Câu hỏi của người dùng:

@@ -20,7 +20,6 @@ import com.graduation.youthtalentfund.repositories.Projection.CampaignStatisticP
 import com.graduation.youthtalentfund.repositories.UserRepository;
 import com.graduation.youthtalentfund.services.CampaignService;
 import com.graduation.youthtalentfund.services.FileStorageService;
-import com.graduation.youthtalentfund.utils.AuthUtil;
 import com.graduation.youthtalentfund.utils.CodeGenerator;
 import com.graduation.youthtalentfund.utils.FileUtils;
 import com.graduation.youthtalentfund.utils.ProjectionS3Util;
@@ -29,8 +28,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.expression.spel.ast.Projection;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -94,7 +91,7 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public CampaignDetailProjection getByCodeOrSlug(String value) {
         CampaignDetailProjection campaign = campaignRepository.findByCodeOrSlug(value).orElseThrow(() -> new ResourceNotFoundException("Campaign Not Found"));
-        return projectionS3Util.addS3(campaign,CampaignDetailProjection.class, "getCoverImagePath");
+        return projectionS3Util.addS3(campaign, CampaignDetailProjection.class, "getCoverImagePath");
     }
 
     @Transactional
@@ -305,7 +302,10 @@ public class CampaignServiceImpl implements CampaignService {
 
         User staff = userRepository.findByCode(staffCode).orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin người dùng."));
 
-        return campaignRepository.findManagedCampaignsShort(staff.getId(), status, category, keyword, pageable);
+        Page<CampaignShortProjection> resultPage = campaignRepository.findManagedCampaignsShort(staff.getId(), status, category, keyword, pageable);
+        return resultPage.map(campaign ->
+                projectionS3Util.addS3(campaign, CampaignShortProjection.class, "getCoverImagePath")
+        );
     }
 
     @Override
