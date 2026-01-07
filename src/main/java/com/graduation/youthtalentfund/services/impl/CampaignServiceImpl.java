@@ -170,6 +170,9 @@ public class CampaignServiceImpl implements CampaignService {
         if (!canEditFull && !canEditPartial) {
             throw new BadRequestException("Chiến dịch ở trạng thái " + status + " không được chỉnh sửa.");
         }
+
+        User assignedStaff = campaign.getStaff();
+        updateCampaignDTO.setAssigneeCode(assignedStaff.getCode());
         if (updateCampaignDTO.getAssigneeCode() != null) {
             User assignee = determineAssignee(currentUser, updateCampaignDTO.getAssigneeCode());
             campaign.setStaff(assignee);
@@ -233,7 +236,7 @@ public class CampaignServiceImpl implements CampaignService {
                     extension);
 
             Map<String, String> uploadResult = fileStorageService.storeFile(image, objectName);
-            campaign.setCoverImagePath(uploadResult.get("original"));
+            campaign.setCoverImagePath(uploadResult.get("ori  ginal"));
         }
 
         Campaign updated = campaignRepository.save(campaign);
