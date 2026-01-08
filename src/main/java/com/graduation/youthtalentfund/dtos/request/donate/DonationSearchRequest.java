@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.dtos.request.donate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.graduation.youthtalentfund.enums.UserDonationSearchType;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class DonationSearchRequest {
     private String donorPhoneNumber;
     private String message;
     private String paymentStatus;
+    @JsonProperty("isAnonymous")
     private Boolean isAnonymous;
     @PositiveOrZero
     private Integer pageNumber;

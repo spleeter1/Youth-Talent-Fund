@@ -1,11 +1,13 @@
 package com.graduation.youthtalentfund.dtos.request.donate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.URL;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @Data
 public class DonationCreateRequest {
@@ -37,7 +39,8 @@ public class DonationCreateRequest {
 
     private String message;
 
-    private boolean isAnonymous;
-    private boolean sendMail;
+    @JsonProperty("isAnonymous")
+    private Boolean isAnonymous;
+    private Boolean sendMail;
 
 }
