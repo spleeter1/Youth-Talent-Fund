@@ -50,6 +50,15 @@ services:
     # Lệnh để khởi động server MinIO và chỉ định cổng cho giao diện web
     command: server /data --console-address ":9001"
 
+  app:
+    build: .
+    container_name: ytf-be
+    env_file:
+      - .env.docker
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql-db
 # Định nghĩa volume để lưu trữ dữ liệu lâu dài
 volumes:
   mysql-data:
