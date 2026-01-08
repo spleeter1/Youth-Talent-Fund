@@ -10,6 +10,7 @@ import com.graduation.youthtalentfund.entities.Campaign;
 import com.graduation.youthtalentfund.entities.CustomUserDetails;
 import com.graduation.youthtalentfund.entities.Donation;
 import com.graduation.youthtalentfund.entities.User;
+import com.graduation.youthtalentfund.enums.CampaignStatus;
 import com.graduation.youthtalentfund.exceptions.ResourceNotFoundException;
 import com.graduation.youthtalentfund.repositories.CampaignRepository;
 import com.graduation.youthtalentfund.repositories.DonationRepository;
@@ -58,7 +59,6 @@ public class DonationServiceImpl implements DonationService {
     private final MailService mailService;
     private final SimpMessagingTemplate messagingTemplate;
     private final WebSocketTokenStore wsTokenStore;
-    private final Validator validator;
 
     public DonationCreateResponse createDonation(DonationCreateRequest donationCreateRequest) {
         Donation donation = new Donation();
@@ -67,6 +67,11 @@ public class DonationServiceImpl implements DonationService {
         if (campaignOptional.isEmpty())
             throw new ResourceNotFoundException("Campaign", "code", donationCreateRequest.getCampaignCode());
         Campaign campaign = campaignOptional.get();
+
+        if (campaign.getStatus() != CampaignStatus.IN_PROGRESS) {
+            throw new ResourceNotFoundException("This campaign is not available");
+        }
+
         donation.setCampaign(campaign);
 
         CustomUserDetails customUserDetails = AuthUtil.getCurrentUser();
@@ -129,6 +134,7 @@ public class DonationServiceImpl implements DonationService {
 
     @Scheduled(fixedDelay = 3600000) // mỗi 1h
     @Transactional
+    @Override
     public void cancelExpiredDonations() {
 
         LocalDateTime expiredTime = LocalDateTime.now().minusMinutes(60);
