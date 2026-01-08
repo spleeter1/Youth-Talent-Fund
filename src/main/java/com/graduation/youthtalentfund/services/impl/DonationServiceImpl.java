@@ -128,6 +128,9 @@ public class DonationServiceImpl implements DonationService {
         String checkoutUrl = payOsResponse.getCheckoutUrl();
         donationCreateResponse.setQrCode(qrCode);
         donationCreateResponse.setCheckoutUrl(checkoutUrl);
+        donationCreateResponse.setAccountName(payOsResponse.getAccountName());
+        donationCreateResponse.setAccountNumber(payOsResponse.getAccountNumber());
+        donationCreateResponse.setDescription(payOsResponse.getDescription());
         donationCreateResponse.setWsToken(wsToken);
 
         return donationCreateResponse;

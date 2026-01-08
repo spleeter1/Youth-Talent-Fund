@@ -9,5 +9,8 @@ public class DonationCreateResponse {
     private String qrCode;
     @NotEmpty
     private String checkoutUrl;
+    private String accountNumber;
+    private String accountName;
+    private String description;
     private String wsToken;
 }
