@@ -26,7 +26,7 @@ public class DonationMapper {
         dataResponse.setDonorEmail(donation.getDonorEmail());
         dataResponse.setDonorPhoneNumber(donation.getDonorPhoneNumber());
         dataResponse.setMessage(donation.getMessage());
-        dataResponse.setAnonymous(donation.isAnonymous());
+        dataResponse.setIsAnonymous(donation.isAnonymous());
         dataResponse.setTransactionCode(donation.getTransactionCode());
         dataResponse.setPaymentStatus(donation.getPaymentStatus());
         dataResponse.setCampaignCode(donation.getCampaign().getCode());

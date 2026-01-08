@@ -1,5 +1,6 @@
 package com.graduation.youthtalentfund.dtos.response.donate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -19,7 +20,8 @@ public class DonationDataResponse {
 
     private String message;
 
-    private boolean isAnonymous;
+    @JsonProperty("isAnonymous")
+    private Boolean isAnonymous;
 
     private String transactionCode;
 

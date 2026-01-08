@@ -44,6 +44,7 @@ import vn.payos.model.webhooks.WebhookData;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 
@@ -86,7 +87,7 @@ public class DonationServiceImpl implements DonationService {
         donation.setDonorEmail(donationCreateRequest.getEmail());
         donation.setDonorPhoneNumber(donationCreateRequest.getPhoneNumber());
         donation.setMessage(donationCreateRequest.getMessage());
-        donation.setAnonymous(donationCreateRequest.isAnonymous());
+        donation.setAnonymous(donationCreateRequest.getIsAnonymous());
 
         long orderCode = Instant.now().toEpochMilli(); // Dùng now() làm orderCode/transactionCode, tính theo ms nên tỉ lệ trùng rất thấp
 
@@ -114,7 +115,7 @@ public class DonationServiceImpl implements DonationService {
 
         donationRepository.save(donation);
 
-        if (donationCreateRequest.isSendMail()) {
+        if (donationCreateRequest.getSendMail()) {
             this.sendVerifyMail(donationCreateRequest.getEmail(), donationCreateRequest.getAmount(), donation.getTransactionCode(), campaign.getTitle(), campaign.getCode());
         }
 
@@ -137,7 +138,7 @@ public class DonationServiceImpl implements DonationService {
     @Override
     public void cancelExpiredDonations() {
 
-        LocalDateTime expiredTime = LocalDateTime.now().minusMinutes(60);
+        LocalDateTime expiredTime = LocalDateTime.now(ZoneId.of("UTC")).minusMinutes(60);
 
         List<Donation> expiredDonations = donationRepository.findExpiredPendingDonations(
                         PaymentLinkStatus.PENDING.getValue(),
