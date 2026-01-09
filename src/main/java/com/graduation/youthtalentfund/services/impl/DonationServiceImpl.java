@@ -341,7 +341,7 @@ public class DonationServiceImpl implements DonationService {
 
     @Override
     public Page<TopDonatorResponse> getTopDonatorStatistic(LocalDateTime start, LocalDateTime end, Integer page) {
-        Page<TopDonatorProjection> projections = donationRepository.findTopDonators(LocalDateTime.MIN, LocalDateTime.now(), Pageable.ofSize(20).withPage(page));
+        Page<TopDonatorProjection> projections = donationRepository.findTopDonators(LocalDateTime.of(2020, 1, 1, 0, 0), LocalDateTime.now(), Pageable.ofSize(20).withPage(page));
         return projections.map(p -> {
             TopDonatorResponse r = new TopDonatorResponse();
             r.setFullName(p.getFullName());

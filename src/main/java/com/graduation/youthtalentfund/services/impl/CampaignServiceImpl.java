@@ -172,9 +172,8 @@ public class CampaignServiceImpl implements CampaignService {
         }
 
         User assignedStaff = campaign.getStaff();
-        updateCampaignDTO.setAssigneeCode(assignedStaff.getCode());
         if (updateCampaignDTO.getAssigneeCode() != null) {
-            User assignee = determineAssignee(currentUser, updateCampaignDTO.getAssigneeCode());
+            User assignee = determineAssignee(currentUser, assignedStaff.getCode());
             campaign.setStaff(assignee);
         }
 
@@ -236,7 +235,7 @@ public class CampaignServiceImpl implements CampaignService {
                     extension);
 
             Map<String, String> uploadResult = fileStorageService.storeFile(image, objectName);
-            campaign.setCoverImagePath(uploadResult.get("ori  ginal"));
+            campaign.setCoverImagePath(uploadResult.get("original"));
         }
 
         Campaign updated = campaignRepository.save(campaign);
@@ -317,16 +316,16 @@ public class CampaignServiceImpl implements CampaignService {
         if (campaign.getStaff() == null) {
             return CampaignStatus.ON_HOLD;
         }
-        if (campaign.getEndDate().isBefore(now)) {
-            return CampaignStatus.COMPLETED;
-        }
         if (campaign.getStartDate().isAfter(now)) {
             return CampaignStatus.PENDING;
+        }
+        if (campaign.getCurrentAmount().compareTo(campaign.getTargetAmount()) >= 0 && campaign.getStatus() == CampaignStatus.IN_PROGRESS) {
+            return CampaignStatus.COMPLETED;
         }
         if (campaign.getStartDate().isBefore(now) && campaign.getEndDate().isAfter(now)) {
             return CampaignStatus.IN_PROGRESS;
         }
-        if (campaign.getCurrentAmount().compareTo(campaign.getTargetAmount()) >= 0 && campaign.getStatus() == CampaignStatus.IN_PROGRESS) {
+        if (campaign.getEndDate().isBefore(now)) {
             return CampaignStatus.COMPLETED;
         }
         return campaign.getStatus();
