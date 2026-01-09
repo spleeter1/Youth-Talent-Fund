@@ -17,7 +17,7 @@ public class CampaignStatusScheduler {
     private final CampaignRepository campaignRepository;
     private final CampaignService campaignService;
 
-    @Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     @Transactional
     public void updateCampaignStatuses() {
         List<CampaignStatus> excluded = List.of(CampaignStatus.COMPLETED, CampaignStatus.CANCELLED);
