@@ -326,6 +326,9 @@ public class CampaignServiceImpl implements CampaignService {
         if (campaign.getStartDate().isBefore(now) && campaign.getEndDate().isAfter(now)) {
             return CampaignStatus.IN_PROGRESS;
         }
+        if (campaign.getCurrentAmount().compareTo(campaign.getTargetAmount()) >= 0 && campaign.getStatus() == CampaignStatus.IN_PROGRESS) {
+            return CampaignStatus.COMPLETED;
+        }
         return campaign.getStatus();
     }
 
